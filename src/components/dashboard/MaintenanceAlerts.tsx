@@ -13,7 +13,7 @@ const MaintenanceAlerts: React.FC<MaintenanceAlertsProps> = ({ drones }) => {
 
   const dueDrones = drones.filter(drone => {
     const nextMaintenance = new Date(drone.nextMaintenanceDueDate);
-    return nextMaintenance <= sevenDaysLater;
+    return nextMaintenance <= sevenDaysLater && drone.status !== 'RETIRED';
   });
 
   const overdueDrones = dueDrones.filter(drone => {
@@ -42,7 +42,7 @@ const MaintenanceAlerts: React.FC<MaintenanceAlertsProps> = ({ drones }) => {
 
   if (dueDrones.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
           <CheckCircle className="text-green-500 mr-2" size={20} />
           Bakım Uyarıları
@@ -57,8 +57,8 @@ const MaintenanceAlerts: React.FC<MaintenanceAlertsProps> = ({ drones }) => {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-      <div className="flex justify-between items-center mb-4">
+    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex flex-col">
+      <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
           <AlertTriangle className="text-orange-500 mr-2" size={20} />
           Bakım Uyarıları
@@ -73,33 +73,35 @@ const MaintenanceAlerts: React.FC<MaintenanceAlertsProps> = ({ drones }) => {
         </div>
       </div>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto">
-        {dueDrones.sort((a, b) => {
-          return new Date(a.nextMaintenanceDueDate).getTime() - new Date(b.nextMaintenanceDueDate).getTime();
-        }).map((drone) => (
-          <div
-            key={drone.id}
-            className={`border rounded-lg p-4 ${getStatusColor(drone)}`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                {getStatusIcon(drone)}
-                <div>
-                  <p className="font-semibold text-gray-900">{drone.serialNumber}</p>
-                  <p className="text-sm text-gray-600">{drone.model}</p>
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="space-y-3 pr-1">
+          {dueDrones.sort((a, b) => {
+            return new Date(a.nextMaintenanceDueDate).getTime() - new Date(b.nextMaintenanceDueDate).getTime();
+          }).map((drone) => (
+            <div
+              key={drone.id}
+              className={`border rounded-lg p-4 ${getStatusColor(drone)}`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  {getStatusIcon(drone)}
+                  <div>
+                    <p className="font-semibold text-gray-900">{drone.serialNumber}</p>
+                    <p className="text-sm text-gray-600">{drone.model}</p>
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0 ml-4">
+                  <p className={`text-sm font-medium ${new Date(drone.nextMaintenanceDueDate) < today ? 'text-red-600' : 'text-orange-600'}`}>
+                    {new Date(drone.nextMaintenanceDueDate) < today ? 'GECİKMİŞ' : 'Bakım Zamanı'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {formatDate(drone.nextMaintenanceDueDate)}
+                  </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className={`text-sm font-medium ${new Date(drone.nextMaintenanceDueDate) < today ? 'text-red-600' : 'text-orange-600'}`}>
-                  {new Date(drone.nextMaintenanceDueDate) < today ? 'GECİKMİŞ' : 'Bakım Zamanı'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  Tarih: {formatDate(drone.nextMaintenanceDueDate)}
-                </p>
-              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

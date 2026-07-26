@@ -40,9 +40,25 @@ const MissionsView: React.FC<MissionsViewProps> = ({ missions, drones }) => {
     return drone ? drone.serialNumber : 'Bilinmeyen Drone';
   };
 
+  if (upcomingMissions.length === 0 && activeMissions.length === 0) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Calendar className="text-blue-500 mr-2" size={20} />
+          Görev Görünümü
+        </h3>
+        <div className="text-center py-8">
+          <Calendar className="text-gray-400 mx-auto mb-3" size={48} />
+          <p className="text-gray-600">Planlanmış veya aktif görev bulunmuyor</p>
+          <p className="text-sm text-gray-500">Yeni görev oluşturmak için sağ üstteki butonu kullanın</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-      <div className="flex justify-between items-center mb-6">
+    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex flex-col">
+      <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
           <Calendar className="text-blue-500 mr-2" size={20} />
           Görev Görünümü
@@ -54,14 +70,8 @@ const MissionsView: React.FC<MissionsViewProps> = ({ missions, drones }) => {
         )}
       </div>
 
-      {upcomingMissions.length === 0 && activeMissions.length === 0 ? (
-        <div className="text-center py-8">
-          <Calendar className="text-gray-400 mx-auto mb-3" size={48} />
-          <p className="text-gray-600">Planlanmış veya aktif görev bulunmuyor</p>
-          <p className="text-sm text-gray-500">Yeni görev oluşturmak için sağ üstteki butonu kullanın</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="space-y-4 pr-1">
           {activeMissions.map((mission) => (
             <div key={mission.id} className="border-l-4 border-green-500 bg-green-50 rounded-r-lg p-4">
               <div className="flex justify-between items-start">
@@ -94,7 +104,7 @@ const MissionsView: React.FC<MissionsViewProps> = ({ missions, drones }) => {
                     </div>
                   </div>
                 </div>
-                <div className="text-sm text-gray-500 text-right">
+                <div className="text-sm text-gray-500 text-right flex-shrink-0 ml-4">
                   <p>{formatDate(mission.plannedStart)}</p>
                   <p>{new Date(mission.plannedStart).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
@@ -134,7 +144,7 @@ const MissionsView: React.FC<MissionsViewProps> = ({ missions, drones }) => {
                     </div>
                   </div>
                 </div>
-                <div className="text-sm text-gray-500 text-right">
+                <div className="text-sm text-gray-500 text-right flex-shrink-0 ml-4">
                   <p>{formatDate(mission.plannedStart)}</p>
                   <p>{new Date(mission.plannedStart).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
@@ -142,7 +152,7 @@ const MissionsView: React.FC<MissionsViewProps> = ({ missions, drones }) => {
             </div>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 };
