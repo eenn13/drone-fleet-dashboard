@@ -6,8 +6,11 @@ import MissionsView from "./components/dashboard/MissionsView";
 import DroneListInfiniteVirtualized from "./components/drones/DroneListInfiniteVirtualized";
 import DroneDetail from "./components/drones/DroneDetail";
 import { Drone, Activity, Wrench, Calendar, XCircle } from "lucide-react";
-import { mockDronesLarge as mockDrones } from "./data/mockDataLarge";
-import { mockMissions, mockMaintenanceLogs } from "./data/mockData";
+import { 
+  mockDronesLarge as mockDrones, 
+  mockMissionsLarge as mockMissions,
+  mockMaintenanceLogsLarge as mockMaintenanceLogs
+} from './data/mockDataLarge';
 import type { Drone as DroneType } from "./types";
 
 function App() {
