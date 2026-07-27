@@ -35,28 +35,26 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Sadece uygun drone'ları filtrele
+  // Sadece AVAILABLE durumunda olan droneları filtrele
   const availableDrones = useMemo(() => {
-    return drones.filter(
-      drone => drone.status === 'AVAILABLE' || drone.status === 'IN_MISSION'
-    );
+    return drones.filter(drone => drone.status === 'AVAILABLE');
   }, [drones]);
 
   // Select için opsiyonlar
   const droneOptions = useMemo(() => {
     const options = availableDrones.map(drone => ({
       value: drone.id,
-      label: `${drone.serialNumber} - ${drone.model} (${drone.status})`,
+      label: `${drone.serialNumber} - ${drone.model} (${drone.status}) - ${drone.totalFlightHours} saat`,
       drone: drone,
     }));
 
-    // Düzenleme modunda ise mevcut drone'u da ekle
+    // Düzenleme modunda ise mevcut drone'u da ekle (durumu ne olursa olsun)
     if (initialData) {
       const currentDrone = drones.find(d => d.id === initialData.assignedDroneId);
       if (currentDrone && !availableDrones.find(d => d.id === currentDrone.id)) {
         options.push({
           value: currentDrone.id,
-          label: `${currentDrone.serialNumber} - ${currentDrone.model} (${currentDrone.status})`,
+          label: `${currentDrone.serialNumber} - ${currentDrone.model} (${currentDrone.status}) - ⚠️ Mevcut drone`,
           drone: currentDrone,
         });
       }
@@ -113,6 +111,12 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
     }
     if (!formData.droneId) {
       newErrors.droneId = 'Drone seçimi gereklidir';
+    } else {
+      // Seçilen drone'un AVAILABLE olup olmadığını kontrol et
+      const selectedDrone = drones.find(d => d.id === formData.droneId);
+      if (selectedDrone && selectedDrone.status !== 'AVAILABLE' && !initialData) {
+        newErrors.droneId = 'Yeni görev için sadece AVAILABLE durumundaki dronelar seçilebilir';
+      }
     }
     if (!formData.plannedStart) {
       newErrors.plannedStart = 'Başlangıç tarihi gereklidir';
@@ -256,7 +260,7 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
               {errors.siteLocation && <p className="mt-1 text-sm text-red-600">{errors.siteLocation}</p>}
             </div>
 
-            {/* Drone Selection - React-Select ile Searchable */}
+            {/* Drone Selection - Only AVAILABLE drones */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Drone <span className="text-red-500">*</span>
@@ -289,10 +293,14 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
               />
               {droneOptions.length === 0 && (
                 <p className="mt-1 text-sm text-yellow-600">
-                  ⚠️ Uygun drone bulunmuyor. (AVAILABLE veya IN_MISSION durumunda olan dronelar)
+                  ⚠️ Uygun drone bulunmuyor. (Sadece AVAILABLE durumunda olan dronelar görevlere atanabilir)
                 </p>
               )}
               {errors.droneId && <p className="mt-1 text-sm text-red-600">{errors.droneId}</p>}
+              <p className="mt-1 text-xs text-gray-500">
+                ℹ️ Yeni görevler için sadece AVAILABLE durumundaki dronelar seçilebilir.
+                {initialData && ' Düzenleme modunda mevcut drone gösterilmektedir.'}
+              </p>
             </div>
 
             {/* Status */}
