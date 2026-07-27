@@ -1,7 +1,10 @@
-import React, { useEffect, useMemo } from 'react';
-import { Calendar, Clock, MapPin, User, CheckCircle, Loader, XCircle, AlertCircle, Inbox } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { 
+  Calendar, Clock, MapPin, User, CheckCircle, Loader, XCircle, AlertCircle, Inbox, 
+  Plus, Edit, Trash2, RefreshCw 
+} from 'lucide-react';
 import { Virtuoso } from 'react-virtuoso';
-import type { Drone } from '../../types';
+import type { Drone, Mission } from '../../types';
 import { 
   getMissionStatusLabel, 
   getMissionStatusColor, 
@@ -10,12 +13,19 @@ import {
   formatDateTime 
 } from '../../utils/helpers';
 import { useMissionStore } from '../../store/missionStore';
+import MissionFormModal from '../missions/MissionFormModal';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 interface MissionsViewProps {
   drones: Drone[];
 }
 
 const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
+  const [editingMission, setEditingMission] = useState<Mission | null>(null);
+
   const { 
     missions, 
     total, 
@@ -24,11 +34,13 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
     fetchMissions, 
     loadMore,
     hasMore,
-    isLoadingMore
+    isLoadingMore,
+    addMission,
+    updateMission,
+    deleteMission
   } = useMissionStore();
 
   useEffect(() => {
-    // Sadece missions boşsa yükle
     if (missions.length === 0) {
       fetchMissions({ page: 1, limit: 20 });
     }
@@ -61,6 +73,50 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
   const getDroneSerial = (droneId: string) => {
     const drone = drones.find(d => d.id === droneId);
     return drone ? drone.serialNumber : 'Bilinmeyen Drone';
+  };
+
+  const handleAddMission = () => {
+    setEditingMission(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditMission = (mission: Mission, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingMission(mission);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteMission = (mission: Mission, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedMission(mission);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleSubmit = async (data: any) => {
+    try {
+      if (editingMission) {
+        await updateMission(editingMission.id, data);
+      } else {
+        await addMission(data);
+      }
+      setIsModalOpen(false);
+      fetchMissions({ page: 1, limit: 20 });
+    } catch (error) {
+      console.error('Form submit error:', error);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedMission) {
+      try {
+        await deleteMission(selectedMission.id);
+        setSelectedMission(null);
+        setIsDeleteDialogOpen(false);
+        fetchMissions({ page: 1, limit: 20 });
+      } catch (error) {
+        console.error('Delete error:', error);
+      }
+    }
   };
 
   const renderMissionItem = (index: number, mission: any) => {
@@ -117,14 +173,30 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
               </div>
             )}
           </div>
-          <div className="text-sm text-gray-500 text-right flex-shrink-0 ml-4">
-            <p>{formatDate(mission.plannedStart)}</p>
-            <p>{new Date(mission.plannedStart).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
-            {mission.actualStart && (
-              <p className="text-xs text-gray-400 mt-1">
-                Başlangıç: {formatDateTime(mission.actualStart)}
-              </p>
-            )}
+          <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
+            <button
+              onClick={(e) => handleEditMission(mission, e)}
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="Düzenle"
+            >
+              <Edit size={18} />
+            </button>
+            <button
+              onClick={(e) => handleDeleteMission(mission, e)}
+              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Sil"
+            >
+              <Trash2 size={18} />
+            </button>
+            <div className="text-sm text-gray-500 text-right">
+              <p>{formatDate(mission.plannedStart)}</p>
+              <p>{new Date(mission.plannedStart).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
+              {mission.actualStart && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Başlangıç: {formatDateTime(mission.actualStart)}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -168,15 +240,24 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
   // Boş durum
   if (missions.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <Calendar className="text-blue-500 mr-2" size={20} />
-          Görev Görünümü
-        </h3>
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex flex-col">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Calendar className="text-blue-500 mr-2" size={20} />
+            Görev Görünümü
+          </h3>
+          <button
+            onClick={handleAddMission}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={18} />
+            <span>Yeni Görev</span>
+          </button>
+        </div>
         <div className="text-center py-8">
           <Inbox className="text-gray-400 mx-auto mb-3" size={48} />
           <p className="text-gray-600">Henüz görev bulunmuyor</p>
-          <p className="text-sm text-gray-500">Yeni görev oluşturmak için yönetim panelini kullanın</p>
+          <p className="text-sm text-gray-500">Yeni görev oluşturmak için "Yeni Görev" butonunu kullanın</p>
         </div>
       </div>
     );
@@ -223,8 +304,16 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
           <button
             onClick={() => fetchMissions({ page: 1, limit: 20 })}
             className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Yenile"
           >
-            Yenile
+            <RefreshCw size={18} />
+          </button>
+          <button
+            onClick={handleAddMission}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={18} />
+            <span>Yeni Görev</span>
           </button>
         </div>
       </div>
@@ -245,6 +334,27 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
           }}
         />
       </div>
+
+      {/* Modals */}
+      <MissionFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSubmit}
+        drones={drones}
+        initialData={editingMission}
+        title={editingMission ? 'Görev Düzenle' : 'Yeni Görev Ekle'}
+      />
+
+      <ConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Görev Sil"
+        message={`"${selectedMission?.name}" adlı görevi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+        confirmLabel="Evet, Sil"
+        cancelLabel="İptal"
+        confirmColor="red"
+      />
     </div>
   );
 };
