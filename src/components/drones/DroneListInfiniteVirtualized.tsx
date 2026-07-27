@@ -94,11 +94,29 @@ const DroneListInfiniteVirtualized: React.FC<DroneListInfiniteVirtualizedProps> 
     setIsModalOpen(true);
   };
 
-  const handleDeleteDrone = (drone: Drone, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteDrone = async (drone: Drone, e: React.MouseEvent) => {
+  e.stopPropagation();
+  
+  // Önce drone'un aktif görevleri var mı kontrol et
+  try {
+    const response = await fetch(`http://localhost:3000/api/drones/${drone.id}/can-delete`);
+    const data = await response.json();
+    
+    if (!data.canDelete) {
+      // Aktif görevleri varsa uyarı göster
+      throw new Error(`Bu drone emekli edilemez çünkü ${data.activeMissionCount} adet planlanmış veya devam eden görevi bulunuyor.`);
+    }
+    
+    // Silme onayı göster
     setSelectedDrone(drone);
     setIsDeleteDialogOpen(true);
-  };
+  } catch (error) {
+    console.error('Error checking drone status:', error);
+    // Hata durumunda da silme işlemini dene
+    setSelectedDrone(drone);
+    setIsDeleteDialogOpen(true);
+  }
+};
 
   const handleSubmit = async (data: any) => {
     try {
