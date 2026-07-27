@@ -12,6 +12,7 @@ import { useUIStore } from "./store/uiStore";
 import { useMissionStore } from "./store/missionStore";
 import { useMaintenanceStore } from "./store/maintenanceStore";
 import type { Drone as DroneType } from "./types";
+import MaintenanceLogsList from "./components/maintenance/MaintenanceLogsList";
 
 function App() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
@@ -300,62 +301,8 @@ function App() {
 
       case "maintenance":
         return (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">
-              Bakım Yönetimi
-            </h2>
-            <MaintenanceAlerts drones={drones} />
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Bakım Geçmişi
-              </h3>
-              {logs.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">Henüz bakım kaydı bulunmuyor</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                  {logs.map((record) => {
-                    const drone = drones.find((d) => d.id === record.droneId);
-                    return (
-                      <div
-                        key={record.id}
-                        className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center space-x-2 mb-1">
-                              <span className="font-semibold text-gray-900">
-                                {drone
-                                  ? drone.serialNumber
-                                  : "Bilinmeyen Drone"}
-                              </span>
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                {record.type}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-600">
-                              {record.notes || "Not girilmemiş"}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Teknisyen: {record.technicianName} | Uçuş saati:{" "}
-                              {record.flightHoursAtTime}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-500">
-                              {new Date(
-                                record.datePerformed,
-                              ).toLocaleDateString("tr-TR")}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+          <div className="h-[calc(100vh-120px)]">
+            <MaintenanceLogsList drones={drones} />
           </div>
         );
 

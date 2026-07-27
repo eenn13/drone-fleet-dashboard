@@ -8,8 +8,10 @@ interface MaintenanceStore {
   currentPage: number;
   totalPages: number;
   isLoading: boolean;
+  isLoadingMore: boolean;
   error: string | null;
   filters: MaintenanceFilters;
+  hasMore: boolean;
   
   // Actions
   fetchLogs: (filters?: MaintenanceFilters) => Promise<void>;
@@ -19,6 +21,7 @@ interface MaintenanceStore {
   deleteLog: (id: string) => Promise<void>;
   setFilters: (filters: MaintenanceFilters) => void;
   clearError: () => void;
+  loadMore: () => Promise<void>;
 }
 
 export const useMaintenanceStore = create<MaintenanceStore>((set, get) => ({
@@ -27,8 +30,10 @@ export const useMaintenanceStore = create<MaintenanceStore>((set, get) => ({
   currentPage: 1,
   totalPages: 0,
   isLoading: false,
+  isLoadingMore: false,
   error: null,
   filters: { page: 1, limit: 20 },
+  hasMore: true,
 
   fetchLogs: async (filters = {}) => {
     set({ isLoading: true, error: null });
@@ -43,11 +48,45 @@ export const useMaintenanceStore = create<MaintenanceStore>((set, get) => ({
         totalPages: response.totalPages,
         filters: currentFilters,
         isLoading: false,
+        hasMore: response.page < response.totalPages,
       });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Bakım kayıtları yüklenirken hata oluştu',
         isLoading: false,
+      });
+    }
+  },
+
+  loadMore: async () => {
+    const { currentPage, totalPages, filters, logs, isLoadingMore } = get();
+    
+    if (currentPage >= totalPages || !get().hasMore || isLoadingMore) {
+      set({ hasMore: false });
+      return;
+    }
+
+    set({ isLoadingMore: true });
+    try {
+      const nextPage = currentPage + 1;
+      const response = await maintenanceService.getAll({
+        ...filters,
+        page: nextPage,
+        limit: 20,
+      });
+      
+      set({
+        logs: [...logs, ...response.items],
+        currentPage: response.page,
+        totalPages: response.totalPages,
+        total: response.total,
+        isLoadingMore: false,
+        hasMore: response.page < response.totalPages,
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Daha fazla bakım kaydı yüklenirken hata oluştu',
+        isLoadingMore: false,
       });
     }
   },
