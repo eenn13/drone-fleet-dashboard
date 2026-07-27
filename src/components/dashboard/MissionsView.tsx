@@ -1,5 +1,6 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Calendar, Clock, MapPin, User, CheckCircle, Loader, XCircle, AlertCircle, Inbox } from 'lucide-react';
+import { Virtuoso } from 'react-virtuoso';
 import type { Drone } from '../../types';
 import { 
   getMissionStatusLabel, 
@@ -9,7 +10,6 @@ import {
   formatDateTime 
 } from '../../utils/helpers';
 import { useMissionStore } from '../../store/missionStore';
-import { Virtuoso } from 'react-virtuoso';
 
 interface MissionsViewProps {
   drones: Drone[];
@@ -28,11 +28,14 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
   } = useMissionStore();
 
   useEffect(() => {
-    fetchMissions({ page: 1, limit: 20 });
+    // Sadece missions boşsa yükle
+    if (missions.length === 0) {
+      fetchMissions({ page: 1, limit: 20 });
+    }
   }, []);
 
   // Tüm mission'ları tarihe göre sırala (önce aktif, sonra planlanmış)
-  const sortedMissions = React.useMemo(() => {
+  const sortedMissions = useMemo(() => {
     const active = missions.filter(m => m.status === 'IN_PROGRESS');
     const scheduled = missions
       .filter(m => m.status === 'SCHEDULED')
@@ -194,7 +197,7 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
     if (!hasMore && missions.length > 0) {
       return (
         <div className="py-4 text-center text-sm text-gray-400">
-          Tüm görevler gösteriliyor ({total} görev)
+          ✅ Tüm görevler gösteriliyor ({total} görev)
         </div>
       );
     }
@@ -217,13 +220,19 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
               {missions.filter(m => m.status === 'IN_PROGRESS').length} aktif
             </span>
           )}
+          <button
+            onClick={() => fetchMissions({ page: 1, limit: 20 })}
+            className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            Yenile
+          </button>
         </div>
       </div>
 
       <div className="flex-1 min-h-0">
         <Virtuoso
           style={{ height: '100%' }}
-          totalCount={missions.length}
+          totalCount={sortedMissions.length}
           itemContent={(index) => renderMissionItem(index, sortedMissions[index])}
           overscan={10}
           endReached={() => {

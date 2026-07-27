@@ -1,30 +1,37 @@
-import { useState, useEffect } from 'react';
-import Layout from './components/Layout';
-import StatsCard from './components/dashboard/StatsCard';
-import MaintenanceAlerts from './components/dashboard/MaintenanceAlerts';
-import MissionsView from './components/dashboard/MissionsView';
-import DroneListInfiniteVirtualized from './components/drones/DroneListInfiniteVirtualized';
-import DroneDetail from './components/drones/DroneDetail';
-import DroneFormModal from './components/drones/DroneFormModal';
-import { 
-  Drone, Activity, Wrench, XCircle, Loader2, Inbox
-} from 'lucide-react';
-import { useDroneStore } from './store/droneStore';
-import { useUIStore } from './store/uiStore';
-import { useMissionStore } from './store/missionStore';
-import { useMaintenanceStore } from './store/maintenanceStore';
-import type { Drone as DroneType } from './types';
+import { useState, useEffect } from "react";
+import Layout from "./components/Layout";
+import StatsCard from "./components/dashboard/StatsCard";
+import MaintenanceAlerts from "./components/dashboard/MaintenanceAlerts";
+import MissionsView from "./components/dashboard/MissionsView";
+import DroneListInfiniteVirtualized from "./components/drones/DroneListInfiniteVirtualized";
+import DroneDetail from "./components/drones/DroneDetail";
+import DroneFormModal from "./components/drones/DroneFormModal";
+import { Drone, Activity, Wrench, XCircle, Loader2, Inbox } from "lucide-react";
+import { useDroneStore } from "./store/droneStore";
+import { useUIStore } from "./store/uiStore";
+import { useMissionStore } from "./store/missionStore";
+import { useMaintenanceStore } from "./store/maintenanceStore";
+import type { Drone as DroneType } from "./types";
 
 function App() {
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [selectedDrone, setSelectedDrone] = useState<DroneType | null>(null);
   const [showDroneDetail, setShowDroneDetail] = useState<boolean>(false);
   const [editingDrone, setEditingDrone] = useState<DroneType | null>(null);
-  
-  const { drones, total, isLoading, error, fetchDrones, addDrone, updateDrone } = useDroneStore();
-   const { missions, fetchMissions } = useMissionStore();
+
+  const {
+    drones,
+    total,
+    isLoading,
+    error,
+    fetchDrones,
+    addDrone,
+    updateDrone,
+  } = useDroneStore();
+  const { missions, fetchMissions } = useMissionStore();
   const { logs, fetchLogs } = useMaintenanceStore();
-  const { isAddDroneModalOpen, openAddDroneModal, closeAddDroneModal } = useUIStore();
+  const { isAddDroneModalOpen, openAddDroneModal, closeAddDroneModal } =
+    useUIStore();
 
   // İlk yükleme
   useEffect(() => {
@@ -48,24 +55,24 @@ function App() {
       closeAddDroneModal();
       fetchDrones({ page: 1, limit: 20 });
     } catch (error) {
-      console.error('Form submit error:', error);
+      console.error("Form submit error:", error);
     }
   };
 
   // İstatistikleri hesapla
   const stats = {
     totalDrones: total,
-    availableDrones: drones.filter(d => d.status === 'AVAILABLE').length,
-    inMissionDrones: drones.filter(d => d.status === 'IN_MISSION').length,
-    maintenanceDrones: drones.filter(d => d.status === 'MAINTENANCE').length,
-    retiredDrones: drones.filter(d => d.status === 'RETIRED').length,
-    activeMissions: missions.filter(m => m.status === 'IN_PROGRESS').length,
-    maintenanceDue: drones.filter(d => {
+    availableDrones: drones.filter((d) => d.status === "AVAILABLE").length,
+    inMissionDrones: drones.filter((d) => d.status === "IN_MISSION").length,
+    maintenanceDrones: drones.filter((d) => d.status === "MAINTENANCE").length,
+    retiredDrones: drones.filter((d) => d.status === "RETIRED").length,
+    activeMissions: missions.filter((m) => m.status === "IN_PROGRESS").length,
+    maintenanceDue: drones.filter((d) => {
       const nextMaintenance = new Date(d.nextMaintenanceDueDate);
       const sevenDaysLater = new Date();
       sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
-      return nextMaintenance <= sevenDaysLater && d.status !== 'RETIRED';
-    }).length
+      return nextMaintenance <= sevenDaysLater && d.status !== "RETIRED";
+    }).length,
   };
 
   const handleSelectDrone = (drone: DroneType) => {
@@ -125,7 +132,7 @@ function App() {
     }
 
     // Boş durum kontrolü - Dashboard
-    if (activeTab === 'dashboard' && drones.length === 0 && !isLoading) {
+    if (activeTab === "dashboard" && drones.length === 0 && !isLoading) {
       return (
         <div className="space-y-6">
           {/* Stats Cards - 0 ile göster */}
@@ -164,7 +171,9 @@ function App() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
             <div className="flex flex-col items-center">
               <Inbox size={64} className="text-gray-300 mb-4" />
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">Henüz Drone Eklenmemiş</h3>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                Henüz Drone Eklenmemiş
+              </h3>
               <p className="text-gray-500 mb-6">
                 Sisteme ilk drone'u eklemek için "Yeni Drone" butonunu kullanın.
               </p>
@@ -192,12 +201,14 @@ function App() {
     }
 
     // Boş durum kontrolü - Drones sayfası
-    if (activeTab === 'drones' && drones.length === 0 && !isLoading) {
+    if (activeTab === "drones" && drones.length === 0 && !isLoading) {
       return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
           <div className="flex flex-col items-center">
             <Inbox size={64} className="text-gray-300 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">Drone Bulunamadı</h3>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              Drone Bulunamadı
+            </h3>
             <p className="text-gray-500 mb-6">
               Sistemde henüz hiç drone kaydı bulunmuyor.
             </p>
@@ -213,8 +224,8 @@ function App() {
       );
     }
 
-    switch(activeTab) {
-      case 'dashboard':
+    switch (activeTab) {
+      case "dashboard":
         return (
           <div className="space-y-6">
             {/* Stats Cards */}
@@ -261,8 +272,10 @@ function App() {
 
             {/* Drone List */}
             <div className="mt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Drone Filosu</h3>
-              <DroneListInfiniteVirtualized 
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Drone Filosu
+              </h3>
+              <DroneListInfiniteVirtualized
                 onSelectDrone={handleSelectDrone}
                 onAddDrone={handleAddDrone}
               />
@@ -270,57 +283,70 @@ function App() {
           </div>
         );
 
-      case 'drones':
+      case "drones":
         return (
-          <DroneListInfiniteVirtualized 
+          <DroneListInfiniteVirtualized
             onSelectDrone={handleSelectDrone}
             onAddDrone={handleAddDrone}
           />
         );
 
-      case 'missions':
+      case "missions":
         return (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Tüm Görevler</h2>
+          <div className="h-[calc(100vh-120px)]">
             <MissionsView drones={drones} />
           </div>
         );
 
-      case 'maintenance':
+      case "maintenance":
         return (
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Bakım Yönetimi</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              Bakım Yönetimi
+            </h2>
             <MaintenanceAlerts drones={drones} />
             <div className="mt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Bakım Geçmişi</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Bakım Geçmişi
+              </h3>
               {logs.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500">Henüz bakım kaydı bulunmuyor</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                  {logs.map(record => {
-                    const drone = drones.find(d => d.id === record.droneId);
+                  {logs.map((record) => {
+                    const drone = drones.find((d) => d.id === record.droneId);
                     return (
-                      <div key={record.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div
+                        key={record.id}
+                        className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                      >
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center space-x-2 mb-1">
                               <span className="font-semibold text-gray-900">
-                                {drone ? drone.serialNumber : 'Bilinmeyen Drone'}
+                                {drone
+                                  ? drone.serialNumber
+                                  : "Bilinmeyen Drone"}
                               </span>
                               <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                                 {record.type}
                               </span>
                             </div>
-                            <p className="text-sm text-gray-600">{record.notes || 'Not girilmemiş'}</p>
+                            <p className="text-sm text-gray-600">
+                              {record.notes || "Not girilmemiş"}
+                            </p>
                             <p className="text-sm text-gray-500">
-                              Teknisyen: {record.technicianName} | Uçuş saati: {record.flightHoursAtTime}
+                              Teknisyen: {record.technicianName} | Uçuş saati:{" "}
+                              {record.flightHoursAtTime}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm text-gray-500">
-                              {new Date(record.datePerformed).toLocaleDateString('tr-TR')}
+                              {new Date(
+                                record.datePerformed,
+                              ).toLocaleDateString("tr-TR")}
                             </p>
                           </div>
                         </div>
@@ -341,14 +367,14 @@ function App() {
   return (
     <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
       {renderContent()}
-      
+
       {/* Drone Form Modal - Global */}
       <DroneFormModal
         isOpen={isAddDroneModalOpen}
         onClose={closeAddDroneModal}
         onSubmit={handleSubmit}
         initialData={editingDrone}
-        title={editingDrone ? 'Drone Düzenle' : 'Yeni Drone Ekle'}
+        title={editingDrone ? "Drone Düzenle" : "Yeni Drone Ekle"}
       />
     </Layout>
   );
