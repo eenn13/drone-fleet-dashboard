@@ -1,59 +1,54 @@
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  Search,
-  Filter,
-  Activity,
-  Clock,
-  Wrench,
-  ChevronRight,
-  Plus,
-  Edit,
-  Trash2,
-  RefreshCw,
-  Loader2,
-} from "lucide-react";
-import type { Drone, DroneStatus } from "../../types";
-import {
-  getDroneStatusLabel,
-  getDroneStatusColor,
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  Search, Filter, Activity, Clock, Wrench, ChevronRight,
+  Plus, Edit, Trash2, RefreshCw, Loader2, Inbox
+} from 'lucide-react';
+import { Virtuoso } from 'react-virtuoso';
+import type { Drone, DroneStatus } from '../../types';
+import { 
+  getDroneStatusLabel, 
+  getDroneStatusColor, 
   getDroneModelLabel,
-  formatDate,
-} from "../../utils/helpers";
-
-import DroneFormModal from "./DroneFormModal";
-import ConfirmDialog from "../common/ConfirmDialog";
-import { useDroneStore } from "../../store/droneStore";
+  formatDate 
+} from '../../utils/helpers';
+import { useDroneStore } from '../../store/droneStore';
+import DroneFormModal from './DroneFormModal';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 interface DroneListInfiniteVirtualizedProps {
   onSelectDrone: (drone: Drone) => void;
-  onAddDrone: () => void; // Bu prop'u ekleyelim
+  onAddDrone: () => void;
 }
-const DroneListInfiniteVirtualized: React.FC<
-  DroneListInfiniteVirtualizedProps
-> = ({ onSelectDrone, onAddDrone }) => {
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<DroneStatus | "ALL">("ALL");
+
+const DroneListInfiniteVirtualized: React.FC<DroneListInfiniteVirtualizedProps> = ({ 
+  onSelectDrone,
+  onAddDrone
+}) => {
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<DroneStatus | 'ALL'>('ALL');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [selectedDrone, setSelectedDrone] = useState<Drone | null>(null);
   const [editingDrone, setEditingDrone] = useState<Drone | null>(null);
 
-  const {
-    drones,
+  const { 
+    drones, 
     total,
     isLoading,
+    isLoadingMore,
     error,
+    hasMore,
     fetchDrones,
+    loadMore,
     addDrone,
     updateDrone,
     deleteDrone,
-    updateMaintenance,
-    clearError,
+    clearError
   } = useDroneStore();
 
   // İlk yükleme
   useEffect(() => {
-    fetchDrones({ page: 1, limit: 50 });
+    fetchDrones({ page: 1, limit: 20 });
   }, []);
 
   // Arama ve filtre değiştiğinde
@@ -61,9 +56,9 @@ const DroneListInfiniteVirtualized: React.FC<
     const timer = setTimeout(() => {
       fetchDrones({
         search: searchTerm || undefined,
-        status: statusFilter !== "ALL" ? statusFilter : undefined,
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
         page: 1,
-        limit: 50,
+        limit: 20,
       });
     }, 500);
 
@@ -71,26 +66,21 @@ const DroneListInfiniteVirtualized: React.FC<
   }, [searchTerm, statusFilter]);
 
   const getStatusDotColor = (status: DroneStatus) => {
-    switch (status) {
-      case "AVAILABLE":
-        return "bg-green-500";
-      case "IN_MISSION":
-        return "bg-blue-500";
-      case "MAINTENANCE":
-        return "bg-orange-500";
-      case "RETIRED":
-        return "bg-gray-500";
-      default:
-        return "bg-gray-500";
+    switch(status) {
+      case 'AVAILABLE': return 'bg-green-500';
+      case 'IN_MISSION': return 'bg-blue-500';
+      case 'MAINTENANCE': return 'bg-orange-500';
+      case 'RETIRED': return 'bg-gray-500';
+      default: return 'bg-gray-500';
     }
   };
 
-  const statusOptions: { value: DroneStatus | "ALL"; label: string }[] = [
-    { value: "ALL", label: "Tümü" },
-    { value: "AVAILABLE", label: "Müsait" },
-    { value: "IN_MISSION", label: "Görevde" },
-    { value: "MAINTENANCE", label: "Bakımda" },
-    { value: "RETIRED", label: "Emekli" },
+  const statusOptions: { value: DroneStatus | 'ALL'; label: string }[] = [
+    { value: 'ALL', label: 'Tümü' },
+    { value: 'AVAILABLE', label: 'Müsait' },
+    { value: 'IN_MISSION', label: 'Görevde' },
+    { value: 'MAINTENANCE', label: 'Bakımda' },
+    { value: 'RETIRED', label: 'Emekli' }
   ];
 
   const handleAddDrone = () => {
@@ -118,12 +108,14 @@ const DroneListInfiniteVirtualized: React.FC<
         await addDrone(data);
       }
       setIsModalOpen(false);
-      fetchDrones({
-        search: searchTerm || undefined,
-        status: statusFilter !== "ALL" ? statusFilter : undefined,
+      fetchDrones({ 
+        search: searchTerm || undefined, 
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        page: 1,
+        limit: 20,
       });
     } catch (error) {
-      console.error("Form submit error:", error);
+      console.error('Form submit error:', error);
     }
   };
 
@@ -133,39 +125,36 @@ const DroneListInfiniteVirtualized: React.FC<
         await deleteDrone(selectedDrone.id);
         setSelectedDrone(null);
         setIsDeleteDialogOpen(false);
-        fetchDrones({
-          search: searchTerm || undefined,
-          status: statusFilter !== "ALL" ? statusFilter : undefined,
+        fetchDrones({ 
+          search: searchTerm || undefined, 
+          status: statusFilter !== 'ALL' ? statusFilter : undefined,
+          page: 1,
+          limit: 20,
         });
       } catch (error) {
-        console.error("Delete error:", error);
+        console.error('Delete error:', error);
       }
     }
   };
 
   // Her bir drone için render fonksiyonu
-  const renderDroneItem = (drone: Drone) => {
+  const renderDroneItem = (index: number, drone: Drone) => {
     return (
-      <div className="p-4 hover:bg-gray-50 cursor-pointer transition-colors group border-b border-gray-100">
+      <div
+        key={drone.id}
+        className="p-4 hover:bg-gray-50 cursor-pointer transition-colors group border-b border-gray-100"
+      >
         <div className="flex flex-col md:flex-row md:items-center justify-between">
           <div className="flex-1" onClick={() => onSelectDrone(drone)}>
             <div className="flex items-center space-x-3">
-              <div
-                className={`w-2.5 h-2.5 rounded-full ${getStatusDotColor(drone.status)}`}
-              />
-              <h3 className="font-semibold text-gray-900">
-                {drone.serialNumber}
-              </h3>
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-medium ${getDroneStatusColor(drone.status)}`}
-              >
+              <div className={`w-2.5 h-2.5 rounded-full ${getStatusDotColor(drone.status)}`} />
+              <h3 className="font-semibold text-gray-900">{drone.serialNumber}</h3>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDroneStatusColor(drone.status)}`}>
                 {getDroneStatusLabel(drone.status)}
               </span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              {getDroneModelLabel(drone.model)}
-            </p>
-
+            <p className="text-sm text-gray-500 mt-1">{getDroneModelLabel(drone.model)}</p>
+            
             <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-600">
               <div className="flex items-center space-x-1">
                 <Activity size={14} />
@@ -181,7 +170,7 @@ const DroneListInfiniteVirtualized: React.FC<
               </div>
             </div>
           </div>
-
+          
           <div className="mt-3 md:mt-0 flex items-center space-x-2">
             <button
               onClick={(e) => handleEditDrone(drone, e)}
@@ -198,16 +187,47 @@ const DroneListInfiniteVirtualized: React.FC<
               <Trash2 size={18} />
             </button>
             <div onClick={() => onSelectDrone(drone)}>
-              <ChevronRight
-                className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all"
-                size={20}
-              />
+              <ChevronRight className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" size={20} />
             </div>
           </div>
         </div>
       </div>
     );
   };
+
+  // Footer component
+  const Footer = () => {
+    if (isLoadingMore) {
+      return (
+        <div className="py-6 text-center">
+          <div className="inline-flex items-center space-x-3">
+            <Loader2 className="animate-spin text-blue-600" size={24} />
+            <span className="text-gray-500 font-medium">Daha fazla drone yükleniyor...</span>
+          </div>
+        </div>
+      );
+    }
+    if (!hasMore && drones.length > 0) {
+      return (
+        <div className="py-6 text-center">
+          <div className="inline-flex items-center space-x-2 text-gray-400">
+            <span>✅</span>
+            <span>Tüm dronelar yüklendi ({total} drone)</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Empty state
+  const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center py-12">
+      <Inbox size={64} className="text-gray-300 mb-4" />
+      <p className="text-gray-500 text-lg">Drone bulunamadı</p>
+      <p className="text-sm text-gray-400 mt-1">Arama kriterlerinize uygun drone yok</p>
+    </div>
+  );
 
   // Yükleme durumu
   if (isLoading && drones.length === 0) {
@@ -230,7 +250,7 @@ const DroneListInfiniteVirtualized: React.FC<
           <button
             onClick={() => {
               clearError();
-              fetchDrones({ page: 1, limit: 50 });
+              fetchDrones({ page: 1, limit: 20 });
             }}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
@@ -249,29 +269,24 @@ const DroneListInfiniteVirtualized: React.FC<
           <h2 className="text-xl font-bold text-gray-900">
             Drone Filosu
             <span className="ml-2 text-sm font-normal text-gray-500">
-              ({total} drone)
+              ({drones.length} / {total} drone)
             </span>
           </h2>
           <div className="flex items-center space-x-3">
             <button
-              onClick={() =>
-                fetchDrones({
-                  page: 1,
-                  limit: 50,
-                  search: searchTerm || undefined,
-                  status: statusFilter !== "ALL" ? statusFilter : undefined,
-                })
-              }
+              onClick={() => fetchDrones({ 
+                page: 1, 
+                limit: 20, 
+                search: searchTerm || undefined, 
+                status: statusFilter !== 'ALL' ? statusFilter : undefined 
+              })}
               className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title="Yenile"
             >
-              <RefreshCw
-                size={18}
-                className={isLoading ? "animate-spin" : ""}
-              />
+              <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
             </button>
             <button
-              onClick={onAddDrone} // Direkt prop'u kullanalım
+              onClick={onAddDrone}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus size={18} />
@@ -279,13 +294,10 @@ const DroneListInfiniteVirtualized: React.FC<
             </button>
           </div>
         </div>
-
+        
         <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4 mt-4">
           <div className="flex-1 relative">
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={20}
-            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
               placeholder="Drone ara (Seri No, Model)..."
@@ -294,17 +306,15 @@ const DroneListInfiniteVirtualized: React.FC<
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-
+          
           <div className="flex items-center space-x-2">
             <Filter size={20} className="text-gray-400" />
             <select
               value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as DroneStatus | "ALL")
-              }
+              onChange={(e) => setStatusFilter(e.target.value as DroneStatus | 'ALL')}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              {statusOptions.map((option) => (
+              {statusOptions.map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -314,25 +324,41 @@ const DroneListInfiniteVirtualized: React.FC<
         </div>
       </div>
 
-      {/* Drone List */}
-      <div className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+      {/* Drone List - Virtualized with Infinite Scroll */}
+      <div className="h-[600px]">
         {drones.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">Drone bulunamadı</p>
-          </div>
+          <EmptyState />
         ) : (
-          drones.map((drone) => renderDroneItem(drone))
+          <Virtuoso
+            style={{ height: '100%' }}
+            totalCount={drones.length}
+            itemContent={(index) => renderDroneItem(index, drones[index])}
+            overscan={10}
+            endReached={() => {
+              if (hasMore && !isLoadingMore) {
+                loadMore();
+              }
+            }}
+            components={{
+              Footer: Footer
+            }}
+          />
         )}
       </div>
 
       {/* Footer */}
       <div className="px-6 py-3 border-t border-gray-200 text-sm text-gray-500 flex justify-between items-center">
-        <span>Toplam {total} drone gösteriliyor</span>
-        {isLoading && (
+        <span>
+          Gösterilen: {drones.length} / {total} drone
+        </span>
+        {isLoadingMore && (
           <span className="text-blue-600 flex items-center space-x-1">
             <Loader2 className="animate-spin" size={14} />
             <span>Yükleniyor...</span>
           </span>
+        )}
+        {!hasMore && drones.length > 0 && (
+          <span className="text-green-600">✅ Tüm dronelar yüklendi</span>
         )}
       </div>
 
@@ -342,7 +368,7 @@ const DroneListInfiniteVirtualized: React.FC<
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSubmit}
         initialData={editingDrone}
-        title={editingDrone ? "Drone Düzenle" : "Yeni Drone Ekle"}
+        title={editingDrone ? 'Drone Düzenle' : 'Yeni Drone Ekle'}
       />
 
       <ConfirmDialog
