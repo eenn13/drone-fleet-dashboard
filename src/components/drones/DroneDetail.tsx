@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Battery, Wrench, Calendar, Clock, 
   Activity, User, MapPin, ChevronDown, ChevronUp,
@@ -18,6 +18,8 @@ import {
   formatDate,
   formatDateTime 
 } from '../../utils/helpers';
+import { useMissionStore } from '../../store/missionStore';
+import { useMaintenanceStore } from '../../store/maintenanceStore';
 
 interface DroneDetailProps {
   drone: Drone;
@@ -27,16 +29,22 @@ interface DroneDetailProps {
 }
 
 const DroneDetail: React.FC<DroneDetailProps> = ({ 
-  drone, 
-  missions, 
-  maintenanceLogs, 
+  drone,
   onBack 
 }) => {
   const [showMissions, setShowMissions] = useState<boolean>(true);
   const [showMaintenance, setShowMaintenance] = useState<boolean>(true);
 
-  const droneMissions = missions.filter((m: Mission) => m.assignedDroneId === drone.id);
-  const droneMaintenance = maintenanceLogs.filter((m: MaintenanceLog) => m.droneId === drone.id);
+  const { missions, fetchMissions } = useMissionStore();
+  const { logs, fetchLogs } = useMaintenanceStore();
+
+  useEffect(() => {
+    fetchMissions({ droneId: drone.id, limit: 50 });
+    fetchLogs({ droneId: drone.id, limit: 50 });
+  }, [drone.id]);
+
+  const droneMissions = missions.filter((m) => m.assignedDroneId === drone.id);
+  const droneMaintenance = logs.filter((m) => m.droneId === drone.id);
 
   const getStatusDotColor = (status: string) => {
     switch(status) {

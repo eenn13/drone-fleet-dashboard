@@ -1,20 +1,31 @@
-import React from 'react';
-import { AlertTriangle, Clock, CheckCircle } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { AlertTriangle, Clock, CheckCircle, Loader, Inbox } from 'lucide-react';
 import type { Drone } from '../../types';
 import { formatDate } from '../../utils/helpers';
+import { useMaintenanceStore } from '../../store/maintenanceStore';
 
 interface MaintenanceAlertsProps {
   drones: Drone[];
 }
 
 const MaintenanceAlerts: React.FC<MaintenanceAlertsProps> = ({ drones }) => {
+  const { logs, isLoading, error, fetchLogs } = useMaintenanceStore();
   const today = new Date();
   const sevenDaysLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const dueDrones = drones.filter(drone => {
-    const nextMaintenance = new Date(drone.nextMaintenanceDueDate);
-    return nextMaintenance <= sevenDaysLater && drone.status !== 'RETIRED';
-  });
+  useEffect(() => {
+    fetchLogs({ page: 1, limit: 50 });
+  }, []);
+
+  // Bakım gereken droneları filtrele (dronelardan hesapla)
+  const dueDrones = drones
+    .filter(drone => {
+      const nextMaintenance = new Date(drone.nextMaintenanceDueDate);
+      return nextMaintenance <= sevenDaysLater && drone.status !== 'RETIRED';
+    })
+    .sort((a, b) => {
+      return new Date(a.nextMaintenanceDueDate).getTime() - new Date(b.nextMaintenanceDueDate).getTime();
+    });
 
   const overdueDrones = dueDrones.filter(drone => {
     const nextMaintenance = new Date(drone.nextMaintenanceDueDate);
@@ -40,6 +51,38 @@ const MaintenanceAlerts: React.FC<MaintenanceAlertsProps> = ({ drones }) => {
     return <Clock className="text-yellow-500" size={18} />;
   };
 
+  if (isLoading && logs.length === 0) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex items-center justify-center">
+        <div className="flex items-center space-x-3">
+          <Loader className="animate-spin text-blue-600" size={24} />
+          <span className="text-gray-500">Bakım kayıtları yükleniyor...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && logs.length === 0) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <AlertTriangle className="text-orange-500 mr-2" size={20} />
+          Bakım Uyarıları
+        </h3>
+        <div className="text-center py-8">
+          <AlertTriangle className="text-red-500 mx-auto mb-3" size={48} />
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={() => fetchLogs({ page: 1, limit: 50 })}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (dueDrones.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full">
@@ -62,6 +105,9 @@ const MaintenanceAlerts: React.FC<MaintenanceAlertsProps> = ({ drones }) => {
         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
           <AlertTriangle className="text-orange-500 mr-2" size={20} />
           Bakım Uyarıları
+          <span className="ml-2 text-sm font-normal text-gray-500">
+            ({dueDrones.length})
+          </span>
         </h3>
         <div className="flex space-x-3">
           <span className="text-sm px-3 py-1 bg-red-100 text-red-700 rounded-full">
@@ -75,9 +121,7 @@ const MaintenanceAlerts: React.FC<MaintenanceAlertsProps> = ({ drones }) => {
 
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="space-y-3 pr-1">
-          {dueDrones.sort((a, b) => {
-            return new Date(a.nextMaintenanceDueDate).getTime() - new Date(b.nextMaintenanceDueDate).getTime();
-          }).map((drone) => (
+          {dueDrones.map((drone) => (
             <div
               key={drone.id}
               className={`border rounded-lg p-4 ${getStatusColor(drone)}`}
