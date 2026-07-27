@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "./components/Layout";
 import StatsCard from "./components/dashboard/StatsCard";
 import MaintenanceAlerts from "./components/dashboard/MaintenanceAlerts";
@@ -12,11 +12,21 @@ import {
   mockMaintenanceLogsLarge as mockMaintenanceLogs
 } from './data/mockDataLarge';
 import type { Drone as DroneType } from "./types";
+import { useDroneStore } from './store/droneStore';
 
 function App() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [selectedDrone, setSelectedDrone] = useState<DroneType | null>(null);
   const [showDroneDetail, setShowDroneDetail] = useState<boolean>(false);
+
+  const { drones, loadDrones } = useDroneStore();
+
+  // İlk yükleme
+  useEffect(() => {
+    if (drones.length === 0) {
+      loadDrones(1000);
+    }
+  }, []);
 
   // İstatistikleri hesapla
   const stats = {

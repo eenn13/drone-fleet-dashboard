@@ -1,5 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Activity, Clock, Wrench, ChevronRight } from 'lucide-react';
+import { 
+  Search, Filter, Activity, Clock, Wrench, ChevronRight,
+  Plus, Edit, Trash2, RefreshCw 
+} from 'lucide-react';
 import type { Drone, DroneStatus } from '../../types';
 import { 
   getDroneStatusLabel, 
@@ -9,6 +12,9 @@ import {
 } from '../../utils/helpers';
 import { useInfiniteVirtualizedList } from '../../hooks/useInfiniteVirtualizedList';
 import InfiniteScrollVirtualizedList from '../common/InfiniteScrollVirtualizedList';
+import DroneFormModal from './DroneFormModal';
+import ConfirmDialog from '../common/ConfirmDialog';
+import { useDroneStore } from '../../store/droneStore';
 
 interface DroneListInfiniteVirtualizedProps {
   drones: Drone[];
@@ -16,14 +22,28 @@ interface DroneListInfiniteVirtualizedProps {
 }
 
 const DroneListInfiniteVirtualized: React.FC<DroneListInfiniteVirtualizedProps> = ({ 
-  drones, 
+  drones: initialDrones, 
   onSelectDrone 
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<DroneStatus | 'ALL'>('ALL');
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [selectedDrone, setSelectedDrone] = useState<Drone | null>(null);
+  const [editingDrone, setEditingDrone] = useState<Drone | null>(null);
+
+  const { drones, addDrone, updateDrone, deleteDrone, loadDrones } = useDroneStore();
+
+  // İlk yükleme
+  React.useEffect(() => {
+    if (drones.length === 0 && initialDrones.length > 0) {
+      loadDrones(initialDrones.length);
+    }
+  }, []);
 
   const filteredDrones = useMemo(() => {
-    return drones.filter(drone => {
+    const dataToFilter = drones.length > 0 ? drones : initialDrones;
+    return dataToFilter.filter(drone => {
       const matchesSearch = 
         drone.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         drone.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -31,7 +51,7 @@ const DroneListInfiniteVirtualized: React.FC<DroneListInfiniteVirtualizedProps> 
       const matchesStatus = statusFilter === 'ALL' || drone.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [drones, searchTerm, statusFilter]);
+  }, [drones, initialDrones, searchTerm, statusFilter]);
 
   // Infinite scroll hook
   const {
@@ -42,8 +62,8 @@ const DroneListInfiniteVirtualized: React.FC<DroneListInfiniteVirtualizedProps> 
     totalItems,
   } = useInfiniteVirtualizedList({
     data: filteredDrones,
-    initialItemsPerPage: 50, // İlk yüklemede 50 drone
-    loadMoreItemsPerPage: 20, // Her seferinde 20 drone ekle
+    initialItemsPerPage: 50,
+    loadMoreItemsPerPage: 20,
   });
 
   const getStatusDotColor = (status: DroneStatus) => {
@@ -64,15 +84,48 @@ const DroneListInfiniteVirtualized: React.FC<DroneListInfiniteVirtualizedProps> 
     { value: 'RETIRED', label: 'Emekli' }
   ];
 
+  const handleAddDrone = () => {
+    setEditingDrone(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditDrone = (drone: Drone, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingDrone(drone);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteDrone = (drone: Drone, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedDrone(drone);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleSubmit = (data: any) => {
+    if (editingDrone) {
+      updateDrone(editingDrone.id, data);
+    } else {
+      addDrone(data);
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleConfirmDelete = () => {
+    if (selectedDrone) {
+      deleteDrone(selectedDrone.id);
+      setSelectedDrone(null);
+    }
+    setIsDeleteDialogOpen(false);
+  };
+
   // Her bir drone için render fonksiyonu
-  const renderDroneItem = (drone: Drone, index: number) => {
+  const renderDroneItem = (drone: Drone) => {
     return (
       <div
-        onClick={() => onSelectDrone(drone)}
         className="p-4 hover:bg-gray-50 cursor-pointer transition-colors group border-b border-gray-100"
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between">
-          <div className="flex-1">
+          <div className="flex-1" onClick={() => onSelectDrone(drone)}>
             <div className="flex items-center space-x-3">
               <div className={`w-2.5 h-2.5 rounded-full ${getStatusDotColor(drone.status)}`} />
               <h3 className="font-semibold text-gray-900">{drone.serialNumber}</h3>
@@ -98,42 +151,29 @@ const DroneListInfiniteVirtualized: React.FC<DroneListInfiniteVirtualizedProps> 
             </div>
           </div>
           
-          <div className="mt-3 md:mt-0 flex items-center">
-            <ChevronRight className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" size={20} />
+          <div className="mt-3 md:mt-0 flex items-center space-x-2">
+            <button
+              onClick={(e) => handleEditDrone(drone, e)}
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="Düzenle"
+            >
+              <Edit size={18} />
+            </button>
+            <button
+              onClick={(e) => handleDeleteDrone(drone, e)}
+              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Sil"
+            >
+              <Trash2 size={18} />
+            </button>
+            <div onClick={() => onSelectDrone(drone)}>
+              <ChevronRight className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" size={20} />
+            </div>
           </div>
         </div>
       </div>
     );
   };
-
-  // Yükleme durumu için özel component
-  const LoadingComponent = () => (
-    <div className="py-8 text-center">
-      <div className="inline-flex items-center space-x-3">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-        <span className="text-gray-500 font-medium">Daha fazla drone yükleniyor...</span>
-      </div>
-    </div>
-  );
-
-  // Tüm veriler yüklendiğinde
-  const EndComponent = () => (
-    <div className="py-6 text-center">
-      <div className="inline-flex items-center space-x-2 text-gray-400">
-        <span>✅</span>
-        <span>Tüm dronelar yüklendi ({totalItems} drone)</span>
-      </div>
-    </div>
-  );
-
-  // Boş durum için
-  const EmptyComponent = () => (
-    <div className="text-center py-12">
-      <div className="text-gray-400 text-6xl mb-4">🛸</div>
-      <p className="text-gray-500 text-lg">Drone bulunamadı</p>
-      <p className="text-sm text-gray-400 mt-1">Arama kriterlerinize uygun drone yok</p>
-    </div>
-  );
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -146,8 +186,14 @@ const DroneListInfiniteVirtualized: React.FC<DroneListInfiniteVirtualizedProps> 
               ({totalItems} drone)
             </span>
           </h2>
-          <div className="text-sm text-gray-400">
-            Gösterilen: {displayedItems.length} / {totalItems}
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleAddDrone}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={18} />
+              <span>Yeni Drone</span>
+            </button>
           </div>
         </div>
         
@@ -189,9 +235,6 @@ const DroneListInfiniteVirtualized: React.FC<DroneListInfiniteVirtualizedProps> 
         loadMore={loadMore}
         height={600}
         overscan={10}
-        loadingComponent={<LoadingComponent />}
-        emptyComponent={<EmptyComponent />}
-        endComponent={<EndComponent />}
       />
 
       {/* Footer */}
@@ -209,6 +252,26 @@ const DroneListInfiniteVirtualized: React.FC<DroneListInfiniteVirtualizedProps> 
           <span className="text-green-600">✅ Tüm dronelar yüklendi</span>
         )}
       </div>
+
+      {/* Modals */}
+      <DroneFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSubmit}
+        initialData={editingDrone}
+        title={editingDrone ? 'Drone Düzenle' : 'Yeni Drone Ekle'}
+      />
+
+      <ConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Drone Sil"
+        message={`"${selectedDrone?.serialNumber}" adlı drone'u silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+        confirmLabel="Evet, Sil"
+        cancelLabel="İptal"
+        confirmColor="red"
+      />
     </div>
   );
 };
