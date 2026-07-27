@@ -50,7 +50,7 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
   };
 
   const renderLogItem = (index: number, log: any) => {
-    const drone = drones.find(d => d.id === log.droneId);
+    const drone = log.drone;
     
     return (
       <div 
