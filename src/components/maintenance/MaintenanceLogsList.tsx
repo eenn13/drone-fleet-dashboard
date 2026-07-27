@@ -1,15 +1,25 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Virtuoso } from 'react-virtuoso';
-import { Wrench, User, Clock, Calendar, Loader, Inbox, AlertCircle } from 'lucide-react';
-import type { Drone } from '../../types';
+import { 
+  Wrench, User, Clock, Calendar, Loader, Inbox, AlertCircle,
+  Plus, Edit, Trash2, RefreshCw 
+} from 'lucide-react';
+import type { Drone, MaintenanceLog } from '../../types';
 import { useMaintenanceStore } from '../../store/maintenanceStore';
 import { formatDate } from '../../utils/helpers';
+import MaintenanceFormModal from './MaintenanceFormModal';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 interface MaintenanceLogsListProps {
   drones: Drone[];
 }
 
 const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => {
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [selectedLog, setSelectedLog] = useState<MaintenanceLog | null>(null);
+  const [editingLog, setEditingLog] = useState<MaintenanceLog | null>(null);
+
   const {
     logs,
     total,
@@ -18,7 +28,10 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
     error,
     hasMore,
     fetchLogs,
-    loadMore
+    loadMore,
+    addLog,
+    updateLog,
+    deleteLog
   } = useMaintenanceStore();
 
   useEffect(() => {
@@ -47,6 +60,50 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
       'FULL_OVERHAUL': 'bg-orange-100 text-orange-700'
     };
     return colors[type] || 'bg-gray-100 text-gray-700';
+  };
+
+  const handleAddLog = () => {
+    setEditingLog(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditLog = (log: MaintenanceLog, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingLog(log);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteLog = (log: MaintenanceLog, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedLog(log);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleSubmit = async (data: any) => {
+    try {
+      if (editingLog) {
+        await updateLog(editingLog.id, data);
+      } else {
+        await addLog(data);
+      }
+      setIsModalOpen(false);
+      fetchLogs({ page: 1, limit: 20 });
+    } catch (error) {
+      console.error('Form submit error:', error);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedLog) {
+      try {
+        await deleteLog(selectedLog.id);
+        setSelectedLog(null);
+        setIsDeleteDialogOpen(false);
+        fetchLogs({ page: 1, limit: 20 });
+      } catch (error) {
+        console.error('Delete error:', error);
+      }
+    }
   };
 
   const renderLogItem = (index: number, log: any) => {
@@ -79,10 +136,26 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
               </span>
             </div>
           </div>
-          <div className="text-right flex-shrink-0 ml-4">
-            <p className="text-sm text-gray-500">
-              {formatDate(log.datePerformed)}
-            </p>
+          <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
+            <button
+              onClick={(e) => handleEditLog(log, e)}
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="Düzenle"
+            >
+              <Edit size={18} />
+            </button>
+            <button
+              onClick={(e) => handleDeleteLog(log, e)}
+              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Sil"
+            >
+              <Trash2 size={18} />
+            </button>
+            <div className="text-right">
+              <p className="text-sm text-gray-500">
+                {formatDate(log.datePerformed)}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -122,10 +195,24 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
   // Boş durum
   if (logs.length === 0) {
     return (
-      <div className="text-center py-12">
-        <Inbox className="text-gray-400 mx-auto mb-3" size={48} />
-        <p className="text-gray-500 text-lg">Henüz bakım kaydı bulunmuyor</p>
-        <p className="text-sm text-gray-400 mt-1">Yeni bakım kaydı eklemek için yönetim panelini kullanın</p>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-900">
+            Bakım Geçmişi
+          </h2>
+          <button
+            onClick={handleAddLog}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={18} />
+            <span>Yeni Bakım</span>
+          </button>
+        </div>
+        <div className="text-center py-12">
+          <Inbox className="text-gray-400 mx-auto mb-3" size={48} />
+          <p className="text-gray-500 text-lg">Henüz bakım kaydı bulunmuyor</p>
+          <p className="text-sm text-gray-400 mt-1">Yeni bakım kaydı eklemek için "Yeni Bakım" butonunu kullanın</p>
+        </div>
       </div>
     );
   }
@@ -161,12 +248,22 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
             ({logs.length} / {total})
           </span>
         </h2>
-        <button
-          onClick={() => fetchLogs({ page: 1, limit: 20 })}
-          className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-        >
-          Yenile
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => fetchLogs({ page: 1, limit: 20 })}
+            className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Yenile"
+          >
+            <RefreshCw size={18} />
+          </button>
+          <button
+            onClick={handleAddLog}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={18} />
+            <span>Yeni Bakım</span>
+          </button>
+        </div>
       </div>
 
       <div className="h-[500px]">
@@ -185,6 +282,30 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
           }}
         />
       </div>
+
+      {/* Modals */}
+      <MaintenanceFormModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingLog(null);
+        }}
+        onSubmit={handleSubmit}
+        drones={drones}
+        initialData={editingLog}
+        title={editingLog ? 'Bakım Kaydı Düzenle' : 'Yeni Bakım Kaydı Ekle'}
+      />
+
+      <ConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Bakım Kaydı Sil"
+        message={`Bu bakım kaydını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+        confirmLabel="Evet, Sil"
+        cancelLabel="İptal"
+        confirmColor="red"
+      />
     </div>
   );
 };
