@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { Calendar, Clock, MapPin, User, CheckCircle, Loader, XCircle, AlertCircle, Inbox } from 'lucide-react';
-import type { Mission, Drone } from '../../types';
+import type { Drone } from '../../types';
 import { 
   getMissionStatusLabel, 
   getMissionStatusColor, 
@@ -9,28 +9,40 @@ import {
   formatDateTime 
 } from '../../utils/helpers';
 import { useMissionStore } from '../../store/missionStore';
+import { Virtuoso } from 'react-virtuoso';
 
 interface MissionsViewProps {
   drones: Drone[];
 }
 
 const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
-  const { missions, isLoading, error, fetchMissions } = useMissionStore();
+  const { 
+    missions, 
+    total, 
+    isLoading, 
+    error, 
+    fetchMissions, 
+    loadMore,
+    hasMore,
+    isLoadingMore
+  } = useMissionStore();
 
   useEffect(() => {
     fetchMissions({ page: 1, limit: 20 });
   }, []);
 
-  const now = new Date();
-  
-  // Aktif görevler
-  const activeMissions = missions.filter(m => m.status === 'IN_PROGRESS');
-  
-  // Planlanmış görevler (tarihe göre sıralı)
-  const upcomingMissions = missions
-    .filter(m => m.status === 'SCHEDULED')
-    .sort((a, b) => new Date(a.plannedStart).getTime() - new Date(b.plannedStart).getTime())
-    .slice(0, 10);
+  // Tüm mission'ları tarihe göre sırala (önce aktif, sonra planlanmış)
+  const sortedMissions = React.useMemo(() => {
+    const active = missions.filter(m => m.status === 'IN_PROGRESS');
+    const scheduled = missions
+      .filter(m => m.status === 'SCHEDULED')
+      .sort((a, b) => new Date(a.plannedStart).getTime() - new Date(b.plannedStart).getTime());
+    const others = missions
+      .filter(m => m.status !== 'IN_PROGRESS' && m.status !== 'SCHEDULED')
+      .sort((a, b) => new Date(a.plannedStart).getTime() - new Date(b.plannedStart).getTime());
+    
+    return [...active, ...scheduled, ...others];
+  }, [missions]);
 
   const getStatusIcon = (status: string) => {
     switch(status) {
@@ -48,6 +60,75 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
     return drone ? drone.serialNumber : 'Bilinmeyen Drone';
   };
 
+  const renderMissionItem = (index: number, mission: any) => {
+    const isActive = mission.status === 'IN_PROGRESS';
+    
+    return (
+      <div 
+        key={mission.id}
+        className={isActive ? 'border-l-4 border-green-500 bg-green-50 rounded-r-lg p-4 mb-3' : 'border rounded-lg p-4 hover:bg-gray-50 transition-colors mb-3'}
+      >
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-1 flex-wrap gap-1">
+              <span className="font-semibold text-gray-900">{mission.name}</span>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMissionStatusColor(mission.status)}`}>
+                <span className="flex items-center space-x-1">
+                  {getStatusIcon(mission.status)}
+                  <span>{getMissionStatusLabel(mission.status)}</span>
+                </span>
+              </span>
+              {isActive && (
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 animate-pulse">
+                  🔴 CANLI
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
+              <div className="flex items-center space-x-1">
+                <span className="font-medium">Tip:</span>
+                <span>{getMissionTypeLabel(mission.type)}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <User size={14} />
+                <span>{mission.pilotName}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span className="font-medium">Drone:</span>
+                <span>{getDroneSerial(mission.assignedDroneId)}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <MapPin size={14} />
+                <span>{mission.siteLocation}</span>
+              </div>
+            </div>
+            {mission.flightHoursLogged && (
+              <div className="mt-1 text-sm text-gray-500">
+                Uçuş saati: {mission.flightHoursLogged} saat
+              </div>
+            )}
+            {mission.abortReason && (
+              <div className="mt-1 text-sm text-red-600 flex items-center space-x-1">
+                <AlertCircle size={14} />
+                <span>İptal: {mission.abortReason}</span>
+              </div>
+            )}
+          </div>
+          <div className="text-sm text-gray-500 text-right flex-shrink-0 ml-4">
+            <p>{formatDate(mission.plannedStart)}</p>
+            <p>{new Date(mission.plannedStart).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
+            {mission.actualStart && (
+              <p className="text-xs text-gray-400 mt-1">
+                Başlangıç: {formatDateTime(mission.actualStart)}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Yükleme durumu
   if (isLoading && missions.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex items-center justify-center">
@@ -59,6 +140,7 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
     );
   }
 
+  // Hata durumu
   if (error && missions.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full">
@@ -80,6 +162,7 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
     );
   }
 
+  // Boş durum
   if (missions.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full">
@@ -96,6 +179,28 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
     );
   }
 
+  // Footer component
+  const Footer = () => {
+    if (isLoadingMore) {
+      return (
+        <div className="py-4 text-center">
+          <div className="inline-flex items-center space-x-2">
+            <Loader className="animate-spin text-blue-600" size={20} />
+            <span className="text-sm text-gray-500">Daha fazla görev yükleniyor...</span>
+          </div>
+        </div>
+      );
+    }
+    if (!hasMore && missions.length > 0) {
+      return (
+        <div className="py-4 text-center text-sm text-gray-400">
+          Tüm görevler gösteriliyor ({total} görev)
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex flex-col">
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
@@ -103,109 +208,33 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
           <Calendar className="text-blue-500 mr-2" size={20} />
           Görev Görünümü
           <span className="ml-2 text-sm font-normal text-gray-500">
-            ({missions.length})
+            ({missions.length} / {total})
           </span>
         </h3>
-        {activeMissions.length > 0 && (
-          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium animate-pulse">
-            {activeMissions.length} aktif görev
-          </span>
-        )}
+        <div className="flex items-center space-x-2">
+          {missions.filter(m => m.status === 'IN_PROGRESS').length > 0 && (
+            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium animate-pulse">
+              {missions.filter(m => m.status === 'IN_PROGRESS').length} aktif
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="space-y-4 pr-1">
-          {activeMissions.map((mission) => (
-            <div key={mission.id} className="border-l-4 border-green-500 bg-green-50 rounded-r-lg p-4">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-1 flex-wrap gap-1">
-                    <span className="font-semibold text-gray-900">{mission.name}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMissionStatusColor(mission.status)}`}>
-                      <span className="flex items-center space-x-1">
-                        {getStatusIcon(mission.status)}
-                        <span>{getMissionStatusLabel(mission.status)}</span>
-                      </span>
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
-                    <div className="flex items-center space-x-1">
-                      <span className="font-medium">Tip:</span>
-                      <span>{getMissionTypeLabel(mission.type)}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <User size={14} />
-                      <span>{mission.pilotName}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <span className="font-medium">Drone:</span>
-                      <span>{getDroneSerial(mission.assignedDroneId)}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <MapPin size={14} />
-                      <span>{mission.siteLocation}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-500 text-right flex-shrink-0 ml-4">
-                  <p>{formatDate(mission.plannedStart)}</p>
-                  <p>{new Date(mission.plannedStart).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {upcomingMissions.map((mission) => (
-            <div key={mission.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="font-semibold text-gray-900">{mission.name}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMissionStatusColor(mission.status)}`}>
-                      <span className="flex items-center space-x-1">
-                        {getStatusIcon(mission.status)}
-                        <span>{getMissionStatusLabel(mission.status)}</span>
-                      </span>
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
-                    <div className="flex items-center space-x-1">
-                      <span className="font-medium">Tip:</span>
-                      <span>{getMissionTypeLabel(mission.type)}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <User size={14} />
-                      <span>{mission.pilotName}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <span className="font-medium">Drone:</span>
-                      <span>{getDroneSerial(mission.assignedDroneId)}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <MapPin size={14} />
-                      <span>{mission.siteLocation}</span>
-                    </div>
-                  </div>
-                  {mission.flightHoursLogged && (
-                    <div className="mt-1 text-sm text-gray-500">
-                      Uçuş saati: {mission.flightHoursLogged} saat
-                    </div>
-                  )}
-                  {mission.abortReason && (
-                    <div className="mt-1 text-sm text-red-600 flex items-center space-x-1">
-                      <AlertCircle size={14} />
-                      <span>İptal: {mission.abortReason}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="text-sm text-gray-500 text-right flex-shrink-0 ml-4">
-                  <p>{formatDate(mission.plannedStart)}</p>
-                  <p>{new Date(mission.plannedStart).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="flex-1 min-h-0">
+        <Virtuoso
+          style={{ height: '100%' }}
+          totalCount={missions.length}
+          itemContent={(index) => renderMissionItem(index, sortedMissions[index])}
+          overscan={10}
+          endReached={() => {
+            if (hasMore && !isLoadingMore) {
+              loadMore();
+            }
+          }}
+          components={{
+            Footer: Footer
+          }}
+        />
       </div>
     </div>
   );

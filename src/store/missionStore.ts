@@ -8,8 +8,10 @@ interface MissionStore {
   currentPage: number;
   totalPages: number;
   isLoading: boolean;
+  isLoadingMore: boolean;
   error: string | null;
   filters: MissionFilters;
+  hasMore: boolean;
   
   // Actions
   fetchMissions: (filters?: MissionFilters) => Promise<void>;
@@ -19,6 +21,7 @@ interface MissionStore {
   deleteMission: (id: string) => Promise<void>;
   setFilters: (filters: MissionFilters) => void;
   clearError: () => void;
+  loadMore: () => Promise<void>;
 }
 
 export const useMissionStore = create<MissionStore>((set, get) => ({
@@ -27,8 +30,10 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   currentPage: 1,
   totalPages: 0,
   isLoading: false,
+  isLoadingMore: false,
   error: null,
   filters: { page: 1, limit: 20 },
+  hasMore: true,
 
   fetchMissions: async (filters = {}) => {
     set({ isLoading: true, error: null });
@@ -43,11 +48,45 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
         totalPages: response.totalPages,
         filters: currentFilters,
         isLoading: false,
+        hasMore: response.page < response.totalPages,
       });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Görevler yüklenirken hata oluştu',
         isLoading: false,
+      });
+    }
+  },
+
+  loadMore: async () => {
+    const { currentPage, totalPages, filters, missions, isLoadingMore } = get();
+    
+    if (currentPage >= totalPages || !get().hasMore || isLoadingMore) {
+      set({ hasMore: false });
+      return;
+    }
+
+    set({ isLoadingMore: true });
+    try {
+      const nextPage = currentPage + 1;
+      const response = await missionService.getAll({
+        ...filters,
+        page: nextPage,
+        limit: 20,
+      });
+      
+      set({
+        missions: [...missions, ...response.items],
+        currentPage: response.page,
+        totalPages: response.totalPages,
+        total: response.total,
+        isLoadingMore: false,
+        hasMore: response.page < response.totalPages,
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Daha fazla görev yüklenirken hata oluştu',
+        isLoadingMore: false,
       });
     }
   },
