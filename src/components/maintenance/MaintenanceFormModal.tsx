@@ -72,14 +72,6 @@ const MaintenanceFormModal: React.FC<MaintenanceFormModalProps> = ({
       newErrors.flightHoursAtTime = 'Uçuş saati 0\'dan küçük olamaz';
     }
 
-    // Drone'un mevcut uçuş saatinden büyük olamaz
-    if (formData.droneId && formData.flightHoursAtTime) {
-      const drone = drones.find(d => d.id === formData.droneId);
-      if (drone && parseFloat(formData.flightHoursAtTime) > drone.totalFlightHours) {
-        newErrors.flightHoursAtTime = `Uçuş saati, drone'un toplam uçuş saatinden (${drone.totalFlightHours}) büyük olamaz`;
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
