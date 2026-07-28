@@ -192,7 +192,7 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
               </div>
               <div className="flex items-center space-x-1">
                 <span className="font-medium">Drone:</span>
-                <span>{getDroneSerial(mission.assignedDrone.id)}</span>
+                <span>{getDroneSerial(mission.assignedDrone?.id)}</span>
               </div>
               <div className="flex items-center space-x-1">
                 <MapPin size={14} />
