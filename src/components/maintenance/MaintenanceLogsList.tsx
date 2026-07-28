@@ -1,20 +1,31 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Virtuoso } from 'react-virtuoso';
-import { 
-  Wrench, User, Clock, Calendar, Loader, Inbox, AlertCircle,
-  Plus, Edit, Trash2, RefreshCw 
-} from 'lucide-react';
-import type { Drone, MaintenanceLog } from '../../types';
-import { useMaintenanceStore } from '../../store/maintenanceStore';
-import { formatDate } from '../../utils/helpers';
-import MaintenanceFormModal from './MaintenanceFormModal';
-import ConfirmDialog from '../common/ConfirmDialog';
+import React, { useEffect, useMemo, useState } from "react";
+import { Virtuoso } from "react-virtuoso";
+import {
+  Wrench,
+  User,
+  Clock,
+  Calendar,
+  Loader,
+  Inbox,
+  AlertCircle,
+  Plus,
+  Edit,
+  Trash2,
+  RefreshCw,
+} from "lucide-react";
+import type { Drone, MaintenanceLog } from "../../types";
+import { useMaintenanceStore } from "../../store/maintenanceStore";
+import { formatDate } from "../../utils/helpers";
+import MaintenanceFormModal from "./MaintenanceFormModal";
+import ConfirmDialog from "../common/ConfirmDialog";
 
 interface MaintenanceLogsListProps {
   drones: Drone[];
 }
 
-const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => {
+const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({
+  drones,
+}) => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [selectedLog, setSelectedLog] = useState<MaintenanceLog | null>(null);
@@ -31,7 +42,7 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
     loadMore,
     addLog,
     updateLog,
-    deleteLog
+    deleteLog,
   } = useMaintenanceStore();
 
   useEffect(() => {
@@ -42,24 +53,24 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
 
   const getMaintenanceTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      'ROUTINE_CHECK': 'Rutin Kontrol',
-      'BATTERY_REPLACEMENT': 'Batarya Değişimi',
-      'MOTOR_REPAIR': 'Motor Tamiri',
-      'FIRMWARE_UPDATE': 'Firmware Güncelleme',
-      'FULL_OVERHAUL': 'Komple Bakım'
+      ROUTINE_CHECK: "Rutin Kontrol",
+      BATTERY_REPLACEMENT: "Batarya Değişimi",
+      MOTOR_REPAIR: "Motor Tamiri",
+      FIRMWARE_UPDATE: "Firmware Güncelleme",
+      FULL_OVERHAUL: "Komple Bakım",
     };
     return labels[type] || type;
   };
 
   const getMaintenanceTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      'ROUTINE_CHECK': 'bg-blue-100 text-blue-700',
-      'BATTERY_REPLACEMENT': 'bg-yellow-100 text-yellow-700',
-      'MOTOR_REPAIR': 'bg-red-100 text-red-700',
-      'FIRMWARE_UPDATE': 'bg-purple-100 text-purple-700',
-      'FULL_OVERHAUL': 'bg-orange-100 text-orange-700'
+      ROUTINE_CHECK: "bg-blue-100 text-blue-700",
+      BATTERY_REPLACEMENT: "bg-yellow-100 text-yellow-700",
+      MOTOR_REPAIR: "bg-red-100 text-red-700",
+      FIRMWARE_UPDATE: "bg-purple-100 text-purple-700",
+      FULL_OVERHAUL: "bg-orange-100 text-orange-700",
     };
-    return colors[type] || 'bg-gray-100 text-gray-700';
+    return colors[type] || "bg-gray-100 text-gray-700";
   };
 
   const handleAddLog = () => {
@@ -89,7 +100,7 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
       setIsModalOpen(false);
       fetchLogs({ page: 1, limit: 20 });
     } catch (error) {
-      console.error('Form submit error:', error);
+      console.error("Form submit error:", error);
     }
   };
 
@@ -101,16 +112,16 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
         setIsDeleteDialogOpen(false);
         fetchLogs({ page: 1, limit: 20 });
       } catch (error) {
-        console.error('Delete error:', error);
+        console.error("Delete error:", error);
       }
     }
   };
 
   const renderLogItem = (index: number, log: any) => {
     const drone = log.drone;
-    
+
     return (
-      <div 
+      <div
         key={log.id}
         className="border rounded-lg p-4 hover:bg-gray-50 transition-colors mb-3"
       >
@@ -118,13 +129,17 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-1">
               <span className="font-semibold text-gray-900">
-                {drone ? drone.serialNumber : 'Bilinmeyen Drone'}
+                {drone ? drone.serialNumber : "Bilinmeyen Drone"}
               </span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMaintenanceTypeColor(log.type)}`}>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${getMaintenanceTypeColor(log.type)}`}
+              >
                 {getMaintenanceTypeLabel(log.type)}
               </span>
             </div>
-            <p className="text-sm text-gray-600">{log.notes || 'Not girilmemiş'}</p>
+            <p className="text-sm text-gray-600">
+              {log.notes || "Not girilmemiş"}
+            </p>
             <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
               <span className="flex items-center space-x-1">
                 <User size={14} />
@@ -192,31 +207,6 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
     );
   }
 
-  // Boş durum
-  if (logs.length === 0) {
-    return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">
-            Bakım Geçmişi
-          </h2>
-          <button
-            onClick={handleAddLog}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={18} />
-            <span>Yeni Bakım</span>
-          </button>
-        </div>
-        <div className="text-center py-12">
-          <Inbox className="text-gray-400 mx-auto mb-3" size={48} />
-          <p className="text-gray-500 text-lg">Henüz bakım kaydı bulunmuyor</p>
-          <p className="text-sm text-gray-400 mt-1">Yeni bakım kaydı eklemek için "Yeni Bakım" butonunu kullanın</p>
-        </div>
-      </div>
-    );
-  }
-
   // Footer component
   const Footer = () => {
     if (isLoadingMore) {
@@ -224,7 +214,9 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
         <div className="py-4 text-center">
           <div className="inline-flex items-center space-x-2">
             <Loader className="animate-spin text-blue-600" size={20} />
-            <span className="text-sm text-gray-500">Daha fazla bakım kaydı yükleniyor...</span>
+            <span className="text-sm text-gray-500">
+              Daha fazla bakım kaydı yükleniyor...
+            </span>
           </div>
         </div>
       );
@@ -241,34 +233,58 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-900">
-          Bakım Geçmişi
-          <span className="ml-2 text-sm font-normal text-gray-500">
-            ({logs.length} / {total})
-          </span>
-        </h2>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => fetchLogs({ page: 1, limit: 20 })}
-            className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Yenile"
-          >
-            <RefreshCw size={18} />
-          </button>
-          <button
-            onClick={handleAddLog}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={18} />
-            <span>Yeni Bakım</span>
-          </button>
+      {logs.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Bakım Geçmişi</h2>
+            <button
+              onClick={handleAddLog}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={18} />
+              <span>Yeni Bakım</span>
+            </button>
+          </div>
+          <div className="text-center py-12">
+            <Inbox className="text-gray-400 mx-auto mb-3" size={48} />
+            <p className="text-gray-500 text-lg">
+              Henüz bakım kaydı bulunmuyor
+            </p>
+            <p className="text-sm text-gray-400 mt-1">
+              Yeni bakım kaydı eklemek için "Yeni Bakım" butonunu kullanın
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-900">
+            Bakım Geçmişi
+            <span className="ml-2 text-sm font-normal text-gray-500">
+              ({logs.length} / {total})
+            </span>
+          </h2>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => fetchLogs({ page: 1, limit: 20 })}
+              className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="Yenile"
+            >
+              <RefreshCw size={18} />
+            </button>
+            <button
+              onClick={handleAddLog}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={18} />
+              <span>Yeni Bakım</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="h-[500px]">
         <Virtuoso
-          style={{ height: '100%' }}
+          style={{ height: "100%" }}
           totalCount={logs.length}
           itemContent={(index) => renderLogItem(index, logs[index])}
           overscan={10}
@@ -278,7 +294,7 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
             }
           }}
           components={{
-            Footer: Footer
+            Footer: Footer,
           }}
         />
       </div>
@@ -293,7 +309,7 @@ const MaintenanceLogsList: React.FC<MaintenanceLogsListProps> = ({ drones }) => 
         onSubmit={handleSubmit}
         drones={drones}
         initialData={editingLog}
-        title={editingLog ? 'Bakım Kaydı Düzenle' : 'Yeni Bakım Kaydı Ekle'}
+        title={editingLog ? "Bakım Kaydı Düzenle" : "Yeni Bakım Kaydı Ekle"}
       />
 
       <ConfirmDialog
