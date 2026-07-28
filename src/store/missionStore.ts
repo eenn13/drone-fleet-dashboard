@@ -20,6 +20,7 @@ interface MissionStore {
   updateMission: (id: string, data: Partial<Mission>) => Promise<void>;
   deleteMission: (id: string) => Promise<void>;
   setFilters: (filters: MissionFilters) => void;
+  clearFilters: () => void;
   clearError: () => void;
   loadMore: () => Promise<void>;
 }
@@ -163,6 +164,12 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
 
   setFilters: (filters: MissionFilters) => {
     set({ filters: { ...get().filters, ...filters } });
+  },
+
+  clearFilters: () => {
+    set({ filters: { page: 1, limit: 20 } });
+    // Filtreleri temizleyip verileri yeniden yükle
+    get().fetchMissions({ page: 1, limit: 20 });
   },
 
   clearError: () => {

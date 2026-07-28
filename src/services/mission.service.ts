@@ -1,5 +1,5 @@
-import apiClient from '../api/client';
-import type { Mission } from '../types';
+import apiClient from "../api/client";
+import type { Mission } from "../types";
 
 interface PaginatedResponse<T> {
   items: T[];
@@ -12,21 +12,36 @@ interface PaginatedResponse<T> {
 export interface MissionFilters {
   page?: number;
   limit?: number;
-  droneId?: string;
   status?: string;
+  droneId?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const missionService = {
-  async getAll(filters: MissionFilters = {}): Promise<PaginatedResponse<Mission>> {
-    const { page = 1, limit = 20, droneId, status } = filters;
+  async getAll(
+    filters: MissionFilters = {},
+  ): Promise<PaginatedResponse<Mission>> {
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      droneId,
+      startDate,
+      endDate,
+    } = filters;
     const params = new URLSearchParams();
-    
-    params.append('page', page.toString());
-    params.append('limit', limit.toString());
-    if (droneId) params.append('droneId', droneId);
-    if (status) params.append('status', status);
-    
-    const response = await apiClient.get<PaginatedResponse<Mission>>(`/missions?${params.toString()}`);
+
+    params.append("page", page.toString());
+    params.append("limit", limit.toString());
+    if (status) params.append("status", status);
+    if (droneId) params.append("droneId", droneId);
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+
+    const response = await apiClient.get<PaginatedResponse<Mission>>(
+      `/missions?${params.toString()}`,
+    );
     return response.data;
   },
 
@@ -35,8 +50,10 @@ export const missionService = {
     return response.data;
   },
 
-  async create(data: Omit<Mission, 'id' | 'createdAt' | 'updatedAt'>): Promise<Mission> {
-    const response = await apiClient.post<Mission>('/missions', data);
+  async create(
+    data: Omit<Mission, "id" | "createdAt" | "updatedAt">,
+  ): Promise<Mission> {
+    const response = await apiClient.post<Mission>("/missions", data);
     return response.data;
   },
 

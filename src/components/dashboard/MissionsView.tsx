@@ -13,6 +13,7 @@ import {
   Edit,
   Trash2,
   RefreshCw,
+  Filter,
 } from "lucide-react";
 import { Virtuoso } from "react-virtuoso";
 import type { Drone, Mission } from "../../types";
@@ -25,6 +26,7 @@ import {
 } from "../../utils/helpers";
 import { useMissionStore } from "../../store/missionStore";
 import MissionFormModal from "../missions/MissionFormModal";
+import MissionFilters from "../missions/MissionFilters";
 import ConfirmDialog from "../common/ConfirmDialog";
 
 interface MissionsViewProps {
@@ -37,6 +39,13 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
   const [initialLoadDone, setInitialLoadDone] = useState<boolean>(false);
+  const [filters, setFilters] = useState({
+    status: '',
+    droneId: '',
+    startDate: '',
+    endDate: '',
+  });
+  const [isFilterApplied, setIsFilterApplied] = useState<boolean>(false);
 
   const {
     missions,
@@ -59,6 +68,24 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
       setInitialLoadDone(true);
     }
   }, [initialLoadDone]);
+
+  // Filtre değiştiğinde verileri yeniden yükle
+  useEffect(() => {
+    if (initialLoadDone) {
+      const hasActiveFilters = filters.status || filters.droneId || filters.startDate || filters.endDate;
+      setIsFilterApplied(!!hasActiveFilters);
+      
+      const activeFilters = {
+        page: 1,
+        limit: 20,
+        status: filters.status || undefined,
+        droneId: filters.droneId || undefined,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined,
+      };
+      fetchMissions(activeFilters);
+    }
+  }, [filters, initialLoadDone]);
 
   // Tüm mission'ları tarihe göre sırala (önce aktif, sonra planlanmış)
   const sortedMissions = useMemo(() => {
@@ -118,6 +145,19 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
     e.stopPropagation();
     setSelectedMission(mission);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleFilterChange = (newFilters: any) => {
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      status: '',
+      droneId: '',
+      startDate: '',
+      endDate: '',
+    });
   };
 
   const handleSubmit = async (data: any) => {
@@ -307,82 +347,120 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
     return null;
   };
 
+  // Boş durum - filtre sonucu boş
+  const renderEmptyState = () => {
+    if (isFilterApplied) {
+      return (
+        <div className="text-center py-12">
+          <Filter className="text-gray-400 mx-auto mb-3" size={48} />
+          <p className="text-gray-600 text-lg">Filtre sonucu görev bulunamadı</p>
+          <p className="text-sm text-gray-400 mt-1">
+            Seçili filtrelerle eşleşen görev yok. Filtreleri temizlemeyi deneyin.
+          </p>
+          <button
+            onClick={handleClearFilters}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Filtreleri Temizle
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-center py-8">
+        <Inbox className="text-gray-400 mx-auto mb-3" size={48} />
+        <p className="text-gray-600">Henüz görev bulunmuyor</p>
+        <p className="text-sm text-gray-500">
+          Yeni görev oluşturmak için "Yeni Görev" butonunu kullanın
+        </p>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex flex-col">
-      {missions.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Calendar className="text-blue-500 mr-2" size={20} />
-              Görev Görünümü
-            </h3>
-            <button
-              onClick={handleAddMission}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus size={18} />
-              <span>Yeni Görev</span>
-            </button>
-          </div>
-          <div className="text-center py-8">
-            <Inbox className="text-gray-400 mx-auto mb-3" size={48} />
-            <p className="text-gray-600">Henüz görev bulunmuyor</p>
-            <p className="text-sm text-gray-500">
-              Yeni görev oluşturmak için "Yeni Görev" butonunu kullanın
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex justify-between items-center mb-4 flex-shrink-0">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Calendar className="text-blue-500 mr-2" size={20} />
-            Görev Görünümü
-            <span className="ml-2 text-sm font-normal text-gray-500">
-              ({missions.length} / {total})
+      <div className="flex justify-between items-center mb-4 flex-shrink-0">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+          <Calendar className="text-blue-500 mr-2" size={20} />
+          Görev Görünümü
+          <span className="ml-2 text-sm font-normal text-gray-500">
+            ({missions.length} / {total})
+          </span>
+          {isFilterApplied && (
+            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+              Filtreli
             </span>
-          </h3>
-          <div className="flex items-center space-x-2">
-            {missions.filter((m) => m.status === "IN_PROGRESS").length > 0 && (
-              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium animate-pulse">
-                {missions.filter((m) => m.status === "IN_PROGRESS").length}{" "}
-                aktif
-              </span>
-            )}
+          )}
+        </h3>
+        <div className="flex items-center space-x-2">
+          {missions.filter((m) => m.status === "IN_PROGRESS").length > 0 && (
+            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium animate-pulse">
+              {missions.filter((m) => m.status === "IN_PROGRESS").length} aktif
+            </span>
+          )}
+          <button
+            onClick={() => {
+              const activeFilters = {
+                page: 1,
+                limit: 20,
+                status: filters.status || undefined,
+                droneId: filters.droneId || undefined,
+                startDate: filters.startDate || undefined,
+                endDate: filters.endDate || undefined,
+              };
+              fetchMissions(activeFilters);
+            }}
+            className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Yenile"
+          >
+            <RefreshCw size={18} />
+          </button>
+          <MissionFilters
+            drones={drones}
+            onFilterChange={handleFilterChange}
+            initialFilters={filters}
+          />
+          {isFilterApplied && (
             <button
-              onClick={() => fetchMissions({ page: 1, limit: 20 })}
-              className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-              title="Yenile"
+              onClick={handleClearFilters}
+              className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Filtreleri Temizle"
             >
-              <RefreshCw size={18} />
+              <XCircle size={18} />
             </button>
-            <button
-              onClick={handleAddMission}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus size={18} />
-              <span>Yeni Görev</span>
-            </button>
-          </div>
+          )}
+          <button
+            onClick={handleAddMission}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={18} />
+            <span>Yeni Görev</span>
+          </button>
         </div>
-      )}
+      </div>
 
       <div className="flex-1 min-h-0">
-        <Virtuoso
-          style={{ height: "100%" }}
-          totalCount={sortedMissions.length}
-          itemContent={(index) =>
-            renderMissionItem(index, sortedMissions[index])
-          }
-          overscan={10}
-          endReached={() => {
-            if (hasMore && !isLoadingMore) {
-              loadMore();
+        {missions.length === 0 ? (
+          renderEmptyState()
+        ) : (
+          <Virtuoso
+            style={{ height: "100%" }}
+            totalCount={sortedMissions.length}
+            itemContent={(index) =>
+              renderMissionItem(index, sortedMissions[index])
             }
-          }}
-          components={{
-            Footer: Footer,
-          }}
-        />
+            overscan={10}
+            endReached={() => {
+              if (hasMore && !isLoadingMore) {
+                loadMore();
+              }
+            }}
+            components={{
+              Footer: Footer,
+            }}
+          />
+        )}
       </div>
 
       {/* Modals */}
