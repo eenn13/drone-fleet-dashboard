@@ -1,20 +1,31 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { 
-  Calendar, Clock, MapPin, User, CheckCircle, Loader, XCircle, AlertCircle, Inbox, 
-  Plus, Edit, Trash2, RefreshCw 
-} from 'lucide-react';
-import { Virtuoso } from 'react-virtuoso';
-import type { Drone, Mission } from '../../types';
-import { 
-  getMissionStatusLabel, 
-  getMissionStatusColor, 
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  CheckCircle,
+  Loader,
+  XCircle,
+  AlertCircle,
+  Inbox,
+  Plus,
+  Edit,
+  Trash2,
+  RefreshCw,
+} from "lucide-react";
+import { Virtuoso } from "react-virtuoso";
+import type { Drone, Mission } from "../../types";
+import {
+  getMissionStatusLabel,
+  getMissionStatusColor,
   getMissionTypeLabel,
   formatDate,
-  formatDateTime 
-} from '../../utils/helpers';
-import { useMissionStore } from '../../store/missionStore';
-import MissionFormModal from '../missions/MissionFormModal';
-import ConfirmDialog from '../common/ConfirmDialog';
+  formatDateTime,
+} from "../../utils/helpers";
+import { useMissionStore } from "../../store/missionStore";
+import MissionFormModal from "../missions/MissionFormModal";
+import ConfirmDialog from "../common/ConfirmDialog";
 
 interface MissionsViewProps {
   drones: Drone[];
@@ -25,54 +36,71 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
+  const [initialLoadDone, setInitialLoadDone] = useState<boolean>(false);
 
-  const { 
-    missions, 
-    total, 
-    isLoading, 
-    error, 
-    fetchMissions, 
+  const {
+    missions,
+    total,
+    isLoading,
+    error,
+    fetchMissions,
     loadMore,
     hasMore,
     isLoadingMore,
     addMission,
     updateMission,
-    deleteMission
+    deleteMission,
   } = useMissionStore();
 
+  // Sadece ilk yüklemede fetch yap
   useEffect(() => {
-    if (missions.length === 0) {
+    if (!initialLoadDone) {
       fetchMissions({ page: 1, limit: 20 });
+      setInitialLoadDone(true);
     }
-  }, []);
+  }, [initialLoadDone]);
 
   // Tüm mission'ları tarihe göre sırala (önce aktif, sonra planlanmış)
   const sortedMissions = useMemo(() => {
-    const active = missions.filter(m => m.status === 'IN_PROGRESS');
+    const active = missions.filter((m) => m.status === "IN_PROGRESS");
     const scheduled = missions
-      .filter(m => m.status === 'SCHEDULED')
-      .sort((a, b) => new Date(a.plannedStart).getTime() - new Date(b.plannedStart).getTime());
+      .filter((m) => m.status === "SCHEDULED")
+      .sort(
+        (a, b) =>
+          new Date(a.plannedStart).getTime() -
+          new Date(b.plannedStart).getTime(),
+      );
     const others = missions
-      .filter(m => m.status !== 'IN_PROGRESS' && m.status !== 'SCHEDULED')
-      .sort((a, b) => new Date(a.plannedStart).getTime() - new Date(b.plannedStart).getTime());
-    
+      .filter((m) => m.status !== "IN_PROGRESS" && m.status !== "SCHEDULED")
+      .sort(
+        (a, b) =>
+          new Date(a.plannedStart).getTime() -
+          new Date(b.plannedStart).getTime(),
+      );
+
     return [...active, ...scheduled, ...others];
   }, [missions]);
 
   const getStatusIcon = (status: string) => {
-    switch(status) {
-      case 'SCHEDULED': return <Calendar size={16} />;
-      case 'IN_PROGRESS': return <Loader className="animate-spin" size={16} />;
-      case 'COMPLETED': return <CheckCircle size={16} />;
-      case 'CANCELLED': return <XCircle size={16} />;
-      case 'ABORTED': return <AlertCircle size={16} />;
-      default: return <Calendar size={16} />;
+    switch (status) {
+      case "SCHEDULED":
+        return <Calendar size={16} />;
+      case "IN_PROGRESS":
+        return <Loader className="animate-spin" size={16} />;
+      case "COMPLETED":
+        return <CheckCircle size={16} />;
+      case "CANCELLED":
+        return <XCircle size={16} />;
+      case "ABORTED":
+        return <AlertCircle size={16} />;
+      default:
+        return <Calendar size={16} />;
     }
   };
 
   const getDroneSerial = (droneId: string) => {
-    const drone = drones.find(d => d.id === droneId);
-    return drone ? drone.serialNumber : 'Bilinmeyen Drone';
+    const drone = drones.find((d) => d.id === droneId);
+    return drone ? drone.serialNumber : "Bilinmeyen Drone";
   };
 
   const handleAddMission = () => {
@@ -100,9 +128,11 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
         await addMission(data);
       }
       setIsModalOpen(false);
+      setEditingMission(null);
+      // Listeyi yenile
       fetchMissions({ page: 1, limit: 20 });
     } catch (error) {
-      console.error('Form submit error:', error);
+      console.error("Form submit error:", error);
     }
   };
 
@@ -114,24 +144,32 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
         setIsDeleteDialogOpen(false);
         fetchMissions({ page: 1, limit: 20 });
       } catch (error) {
-        console.error('Delete error:', error);
+        console.error("Delete error:", error);
       }
     }
   };
 
   const renderMissionItem = (index: number, mission: any) => {
-    const isActive = mission.status === 'IN_PROGRESS';
-    
+    const isActive = mission.status === "IN_PROGRESS";
+
     return (
-      <div 
+      <div
         key={mission.id}
-        className={isActive ? 'border-l-4 border-green-500 bg-green-50 rounded-r-lg p-4 mb-3' : 'border rounded-lg p-4 hover:bg-gray-50 transition-colors mb-3'}
+        className={
+          isActive
+            ? "border-l-4 border-green-500 bg-green-50 rounded-r-lg p-4 mb-3"
+            : "border rounded-lg p-4 hover:bg-gray-50 transition-colors mb-3"
+        }
       >
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-1 flex-wrap gap-1">
-              <span className="font-semibold text-gray-900">{mission.name}</span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMissionStatusColor(mission.status)}`}>
+              <span className="font-semibold text-gray-900">
+                {mission.name}
+              </span>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${getMissionStatusColor(mission.status)}`}
+              >
                 <span className="flex items-center space-x-1">
                   {getStatusIcon(mission.status)}
                   <span>{getMissionStatusLabel(mission.status)}</span>
@@ -190,7 +228,12 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
             </button>
             <div className="text-sm text-gray-500 text-right">
               <p>{formatDate(mission.plannedStart)}</p>
-              <p>{new Date(mission.plannedStart).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
+              <p>
+                {new Date(mission.plannedStart).toLocaleTimeString("tr-TR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
               {mission.actualStart && (
                 <p className="text-xs text-gray-400 mt-1">
                   Başlangıç: {formatDateTime(mission.actualStart)}
@@ -203,8 +246,8 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
     );
   };
 
-  // Yükleme durumu
-  if (isLoading && missions.length === 0) {
+  // Yükleme durumu - Sadece ilk yüklemede göster
+  if (isLoading && !initialLoadDone) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex items-center justify-center">
         <div className="flex items-center space-x-3">
@@ -227,37 +270,14 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
           <AlertCircle className="text-red-500 mx-auto mb-3" size={48} />
           <p className="text-red-600">{error}</p>
           <button
-            onClick={() => fetchMissions({ page: 1, limit: 20 })}
+            onClick={() => {
+              setInitialLoadDone(false);
+              fetchMissions({ page: 1, limit: 20 });
+            }}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Tekrar Dene
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Boş durum
-  if (missions.length === 0) {
-    return (
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex flex-col">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Calendar className="text-blue-500 mr-2" size={20} />
-            Görev Görünümü
-          </h3>
-          <button
-            onClick={handleAddMission}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={18} />
-            <span>Yeni Görev</span>
-          </button>
-        </div>
-        <div className="text-center py-8">
-          <Inbox className="text-gray-400 mx-auto mb-3" size={48} />
-          <p className="text-gray-600">Henüz görev bulunmuyor</p>
-          <p className="text-sm text-gray-500">Yeni görev oluşturmak için "Yeni Görev" butonunu kullanın</p>
         </div>
       </div>
     );
@@ -270,7 +290,9 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
         <div className="py-4 text-center">
           <div className="inline-flex items-center space-x-2">
             <Loader className="animate-spin text-blue-600" size={20} />
-            <span className="text-sm text-gray-500">Daha fazla görev yükleniyor...</span>
+            <span className="text-sm text-gray-500">
+              Daha fazla görev yükleniyor...
+            </span>
           </div>
         </div>
       );
@@ -287,42 +309,70 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4 flex-shrink-0">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-          <Calendar className="text-blue-500 mr-2" size={20} />
-          Görev Görünümü
-          <span className="ml-2 text-sm font-normal text-gray-500">
-            ({missions.length} / {total})
-          </span>
-        </h3>
-        <div className="flex items-center space-x-2">
-          {missions.filter(m => m.status === 'IN_PROGRESS').length > 0 && (
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium animate-pulse">
-              {missions.filter(m => m.status === 'IN_PROGRESS').length} aktif
-            </span>
-          )}
-          <button
-            onClick={() => fetchMissions({ page: 1, limit: 20 })}
-            className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Yenile"
-          >
-            <RefreshCw size={18} />
-          </button>
-          <button
-            onClick={handleAddMission}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={18} />
-            <span>Yeni Görev</span>
-          </button>
+      {missions.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <Calendar className="text-blue-500 mr-2" size={20} />
+              Görev Görünümü
+            </h3>
+            <button
+              onClick={handleAddMission}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={18} />
+              <span>Yeni Görev</span>
+            </button>
+          </div>
+          <div className="text-center py-8">
+            <Inbox className="text-gray-400 mx-auto mb-3" size={48} />
+            <p className="text-gray-600">Henüz görev bulunmuyor</p>
+            <p className="text-sm text-gray-500">
+              Yeni görev oluşturmak için "Yeni Görev" butonunu kullanın
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex justify-between items-center mb-4 flex-shrink-0">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Calendar className="text-blue-500 mr-2" size={20} />
+            Görev Görünümü
+            <span className="ml-2 text-sm font-normal text-gray-500">
+              ({missions.length} / {total})
+            </span>
+          </h3>
+          <div className="flex items-center space-x-2">
+            {missions.filter((m) => m.status === "IN_PROGRESS").length > 0 && (
+              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium animate-pulse">
+                {missions.filter((m) => m.status === "IN_PROGRESS").length}{" "}
+                aktif
+              </span>
+            )}
+            <button
+              onClick={() => fetchMissions({ page: 1, limit: 20 })}
+              className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="Yenile"
+            >
+              <RefreshCw size={18} />
+            </button>
+            <button
+              onClick={handleAddMission}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={18} />
+              <span>Yeni Görev</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 min-h-0">
         <Virtuoso
-          style={{ height: '100%' }}
+          style={{ height: "100%" }}
           totalCount={sortedMissions.length}
-          itemContent={(index) => renderMissionItem(index, sortedMissions[index])}
+          itemContent={(index) =>
+            renderMissionItem(index, sortedMissions[index])
+          }
           overscan={10}
           endReached={() => {
             if (hasMore && !isLoadingMore) {
@@ -330,7 +380,7 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
             }
           }}
           components={{
-            Footer: Footer
+            Footer: Footer,
           }}
         />
       </div>
@@ -338,11 +388,14 @@ const MissionsView: React.FC<MissionsViewProps> = ({ drones }) => {
       {/* Modals */}
       <MissionFormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingMission(null);
+        }}
         onSubmit={handleSubmit}
         drones={drones}
         initialData={editingMission}
-        title={editingMission ? 'Görev Düzenle' : 'Yeni Görev Ekle'}
+        title={editingMission ? "Görev Düzenle" : "Yeni Görev Ekle"}
       />
 
       <ConfirmDialog
