@@ -12,6 +12,38 @@ interface MissionFormModalProps {
   title?: string;
 }
 
+// Status akışı tanımı
+const STATUS_FLOW = {
+  PLANNED: {
+    next: ['PRE_FLIGHT_CHECK', 'ABORTED'] as const,
+    label: 'Planlandı',
+    order: 1,
+  },
+  PRE_FLIGHT_CHECK: {
+    next: ['IN_PROGRESS', 'ABORTED'] as const,
+    label: 'Uçuş Öncesi Kontrol',
+    order: 2,
+  },
+  IN_PROGRESS: {
+    next: ['COMPLETED', 'ABORTED'] as const,
+    label: 'Devam Ediyor',
+    order: 3,
+  },
+  COMPLETED: {
+    next: [] as const,
+    label: 'Tamamlandı',
+    order: 4,
+  },
+  ABORTED: {
+    next: [] as const,
+    label: 'Durduruldu',
+    order: 5,
+  },
+} as const;
+
+type MissionStatus = keyof typeof STATUS_FLOW;
+type NextStatus = typeof STATUS_FLOW[MissionStatus]['next'][number];
+
 const MissionFormModal: React.FC<MissionFormModalProps> = ({
   isOpen,
   onClose,
@@ -27,7 +59,7 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
     siteLocation: '',
     plannedStart: '',
     plannedEnd: '',
-    status: 'SCHEDULED',
+    status: 'PLANNED' as MissionStatus,
     droneId: '',
     flightHoursLogged: '',
     abortReason: '',
@@ -48,7 +80,6 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
       drone: drone,
     }));
 
-    // Düzenleme modunda ise mevcut drone'u da ekle (durumu ne olursa olsun)
     if (initialData) {
       const currentDrone = drones.find(d => d.id === initialData.assignedDroneId);
       if (currentDrone && !availableDrones.find(d => d.id === currentDrone.id)) {
@@ -75,7 +106,7 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
         siteLocation: initialData.siteLocation,
         plannedStart: initialData.plannedStart.split('T')[0],
         plannedEnd: initialData.plannedEnd.split('T')[0],
-        status: initialData.status,
+        status: initialData.status as MissionStatus,
         droneId: initialData.assignedDroneId,
         flightHoursLogged: initialData.flightHoursLogged?.toString() || '',
         abortReason: initialData.abortReason || '',
@@ -88,7 +119,7 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
         siteLocation: '',
         plannedStart: new Date().toISOString().split('T')[0],
         plannedEnd: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().split('T')[0],
-        status: 'SCHEDULED',
+        status: 'PLANNED',
         droneId: '',
         flightHoursLogged: '',
         abortReason: '',
@@ -96,6 +127,20 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
     }
     setErrors({});
   }, [initialData, isOpen]);
+
+  // Mevcut status'e göre izin verilen sonraki status'leri al
+  const getAvailableStatuses = (currentStatus: MissionStatus): MissionStatus[] => {
+    if (currentStatus === 'COMPLETED' || currentStatus === 'ABORTED') {
+      return [];
+    }
+    // 'as unknown as MissionStatus[]' ile tip dönüşümü yap
+    return STATUS_FLOW[currentStatus].next as unknown as MissionStatus[];
+  };
+
+  // Final status'ler (değiştirilemez)
+  const isFinalStatus = (status: MissionStatus): boolean => {
+    return ['COMPLETED', 'ABORTED'].includes(status);
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -112,9 +157,8 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
     if (!formData.droneId) {
       newErrors.droneId = 'Drone seçimi gereklidir';
     } else {
-      // Seçilen drone'un AVAILABLE olup olmadığını kontrol et
       const selectedDrone = drones.find(d => d.id === formData.droneId);
-      if (selectedDrone && selectedDrone.status !== 'AVAILABLE' && !initialData) {
+      if (!initialData && selectedDrone && selectedDrone.status !== 'AVAILABLE') {
         newErrors.droneId = 'Yeni görev için sadece AVAILABLE durumundaki dronelar seçilebilir';
       }
     }
@@ -131,10 +175,12 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
       newErrors.plannedEnd = 'Bitiş tarihi, başlangıç tarihinden sonra olmalıdır';
     }
 
+    // COMPLETED ise flight hours required
     if (formData.status === 'COMPLETED' && !formData.flightHoursLogged) {
       newErrors.flightHoursLogged = 'Tamamlanan görev için uçuş saati girilmelidir';
     }
 
+    // ABORTED ise abort reason required
     if (formData.status === 'ABORTED' && !formData.abortReason.trim()) {
       newErrors.abortReason = 'Durdurulan görev için iptal nedeni girilmelidir';
     }
@@ -164,13 +210,9 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
     { value: 'POWER_LINE_PATROL', label: 'Enerji Hattı Kontrolü' },
   ];
 
-  const missionStatuses = [
-    { value: 'SCHEDULED', label: 'Planlandı' },
-    { value: 'IN_PROGRESS', label: 'Devam Ediyor' },
-    { value: 'COMPLETED', label: 'Tamamlandı' },
-    { value: 'CANCELLED', label: 'İptal Edildi' },
-    { value: 'ABORTED', label: 'Durduruldu' },
-  ];
+  const getStatusLabel = (status: MissionStatus): string => {
+    return STATUS_FLOW[status].label;
+  };
 
   if (!isOpen) return null;
 
@@ -260,7 +302,7 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
               {errors.siteLocation && <p className="mt-1 text-sm text-red-600">{errors.siteLocation}</p>}
             </div>
 
-            {/* Drone Selection - Only AVAILABLE drones */}
+            {/* Drone Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Drone <span className="text-red-500">*</span>
@@ -291,34 +333,70 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
                 }}
                 noOptionsMessage={() => 'Uygun drone bulunamadı'}
               />
-              {droneOptions.length === 0 && (
+              {droneOptions.length === 0 && !initialData && (
                 <p className="mt-1 text-sm text-yellow-600">
                   ⚠️ Uygun drone bulunmuyor. (Sadece AVAILABLE durumunda olan dronelar görevlere atanabilir)
                 </p>
               )}
               {errors.droneId && <p className="mt-1 text-sm text-red-600">{errors.droneId}</p>}
-              <p className="mt-1 text-xs text-gray-500">
-                ℹ️ Yeni görevler için sadece AVAILABLE durumundaki dronelar seçilebilir.
-                {initialData && ' Düzenleme modunda mevcut drone gösterilmektedir.'}
-              </p>
             </div>
 
             {/* Status */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Durum <span className="text-red-500">*</span>
+                Durum {initialData && <span className="text-red-500">*</span>}
               </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {missionStatuses.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
+              {initialData ? (
+                <select
+                  value={formData.status}
+                  onChange={(e) => {
+                    const newStatus = e.target.value as MissionStatus;
+                    setFormData({ ...formData, status: newStatus });
+                    // Status değişince ilgili alanları temizle
+                    if (newStatus !== 'COMPLETED') {
+                      setFormData(prev => ({ ...prev, flightHoursLogged: '' }));
+                    }
+                    if (newStatus !== 'ABORTED') {
+                      setFormData(prev => ({ ...prev, abortReason: '' }));
+                    }
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isFinalStatus(formData.status)}
+                >
+                  <option value={formData.status}>
+                    {getStatusLabel(formData.status)} (Mevcut)
                   </option>
-                ))}
-              </select>
+                  {getAvailableStatuses(formData.status).map((status) => (
+                    <option key={status} value={status}>
+                      → {getStatusLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600">
+                  📋 {getStatusLabel('PLANNED')} (PLANNED)
+                </div>
+              )}
+              {!initialData && (
+                <p className="mt-1 text-xs text-gray-400">
+                  Yeni görevler her zaman "Planlandı" durumunda oluşturulur.
+                </p>
+              )}
+              {initialData && !isFinalStatus(formData.status) && (
+                <p className="mt-1 text-xs text-blue-500">
+                  ℹ️ {getStatusLabel(formData.status)} → {getAvailableStatuses(formData.status).map(s => getStatusLabel(s)).join(' veya ')}
+                </p>
+              )}
+              {initialData && formData.status === 'COMPLETED' && (
+                <p className="mt-1 text-xs text-green-500">
+                  ✅ Görev tamamlandı. Artık durumu değiştiremezsiniz.
+                </p>
+              )}
+              {initialData && formData.status === 'ABORTED' && (
+                <p className="mt-1 text-xs text-red-500">
+                  ⛔ Görev durduruldu. Artık durumu değiştiremezsiniz.
+                </p>
+              )}
             </div>
 
             {/* Dates */}
@@ -353,7 +431,7 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
               </div>
             </div>
 
-            {/* Flight Hours (conditional) */}
+            {/* Flight Hours (conditional - only for COMPLETED) */}
             {formData.status === 'COMPLETED' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -374,7 +452,7 @@ const MissionFormModal: React.FC<MissionFormModalProps> = ({
               </div>
             )}
 
-            {/* Abort Reason (conditional) */}
+            {/* Abort Reason (conditional - only for ABORTED) */}
             {formData.status === 'ABORTED' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
